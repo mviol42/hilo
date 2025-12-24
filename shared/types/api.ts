@@ -24,6 +24,16 @@ export interface JoinLobbyResponse {
   error?: string;
 }
 
+export interface LeaveLobbyRequest {
+  lobbyId: LobbyId;
+  playerId: PlayerId;
+}
+
+export interface LeaveLobbyResponse {
+  success: boolean;
+  lobby?: LobbyState;
+}
+
 export interface StartGameRequest {
   lobbyId: LobbyId;
   playerId: PlayerId;

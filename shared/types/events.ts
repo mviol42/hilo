@@ -79,6 +79,11 @@ export interface ClientToServerEvents {
   'game:selectFaceUp': (data: GameSelectFaceUpEvent) => void;
 }
 
+// Error event
+export interface ErrorEvent {
+  message: string;
+}
+
 // Server-to-Client event map
 export interface ServerToClientEvents {
   'lobby:playerJoined': (data: LobbyPlayerJoinedEvent) => void;
@@ -89,4 +94,5 @@ export interface ServerToClientEvents {
   'game:turnChange': (data: GameTurnChangeEvent) => void;
   'game:pileBlown': (data: GamePileBlownEvent) => void;
   'game:playerWon': (data: GamePlayerWonEvent) => void;
+  'error': (data: ErrorEvent) => void;
 }

@@ -26,7 +26,43 @@ export async function createServer() {
     res.json({ status: 'ok' });
   });
 
-  // TODO: Add routes and Socket.IO handlers
+  // API routes
+  const { lobbyRouter } = await import('./routes/lobby');
+  const { gameRouter, setSocketIO } = await import('./routes/game');
+  const { lobbyService } = await import('./services/lobbyService');
+  const { redisService } = await import('./services/redisService');
+
+  // Initialize Redis
+  await redisService.connect();
+
+  // Pass Socket.IO instance to game router
+  setSocketIO(io);
+
+  app.use('/api/lobby', lobbyRouter);
+  app.use('/api/game', gameRouter);
+
+  // Start lobby cleanup
+  lobbyService.startCleanup();
+
+  // Error handling
+  const { notFoundHandler, errorHandler } = await import('./middleware/errorHandler');
+  app.use(notFoundHandler);
+  app.use(errorHandler);
+
+  // Socket.IO event handlers
+  const { registerLobbyHandlers, registerGameHandlers } = await import('./handlers');
+
+  io.on('connection', (socket) => {
+    console.log(`Client connected: ${socket.id}`);
+
+    // Register all event handlers
+    registerLobbyHandlers(io, socket);
+    registerGameHandlers(io, socket);
+
+    socket.on('disconnect', () => {
+      console.log(`Client disconnected: ${socket.id}`);
+    });
+  });
 
   return { app, server, io };
 }

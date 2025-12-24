@@ -11,13 +11,10 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "types": ["node", "vitest/globals"],
-    "baseUrl": ".",
-    "paths": {
-      "@hilo/shared": ["../shared/dist"],
-      "@hilo/shared/*": ["../shared/dist/*"]
-    }
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "exclude": ["node_modules", "dist"]
 }

@@ -135,6 +135,67 @@ describe('Lobby WebSocket Events', () => {
 });
 ```
 
+## WebSocket Testing Subtleties
+
+### Event Timing and Buffering
+
+**Problem**: When multiple events are emitted in rapid succession (e.g., `stateUpdate` → `stateUpdate` → `turnChange`), tests using `waitForEvent()` may receive stale/buffered events instead of the expected ones.
+
+**Example**: After all players select face-up cards:
+1. Server emits: `stateUpdate` (after selectFaceUp)
+2. Server emits: `stateUpdate` (after startGamePlay)
+3. Server emits: `turnChange`
+
+If a test then calls `waitForEvent(socket, 'game:stateUpdate')` to wait for a card play event, it may receive one of the buffered events from setup.
+
+**Solution**: Remove event listeners after setup to prevent stale events:
+```typescript
+await waitForEvent(socket1, 'game:turnChange'); // Wait for game start
+
+// Remove stateUpdate listeners to prevent receiving buffered events
+socket1.removeAllListeners('game:stateUpdate');
+socket2.removeAllListeners('game:stateUpdate');
+```
+
+### PlayerView vs GameState Structure
+
+**Problem**: Tests may incorrectly access game state properties based on internal `GameState` structure rather than the client-facing `PlayerView` structure.
+
+**Incorrect**:
+```typescript
+expect(stateUpdate.gameState.players[playerId].hand.length).toBe(3);
+```
+
+**Correct** (PlayerView structure):
+```typescript
+expect(stateUpdate.gameState.myHand.length).toBe(3);
+expect(stateUpdate.gameState.otherPlayers[otherPlayerId].handCount).toBe(3);
+```
+
+### Error Event Typing
+
+**Problem**: Socket.IO's `error` event must be included in `ServerToClientEvents` for type-safe testing.
+
+**Solution**: Add to `shared/types/events.ts`:
+```typescript
+export interface ErrorEvent {
+  message: string;
+}
+
+export interface ServerToClientEvents {
+  // ... other events
+  'error': (data: ErrorEvent) => void;
+}
+```
+
+### Test Performance
+
+Keep integration test suite under 5 seconds by:
+- Reducing artificial delays (use 20ms instead of 100ms)
+- Removing listeners to prevent event buffering
+- Using `waitForEvent()` strategically (wait for definitive events like `turnChange`)
+- Avoiding unnecessary setup/teardown delays
+
 ## Prerequisites
 
 - Test server runs on separate port (default: 3001)

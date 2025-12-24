@@ -1,0 +1,33 @@
+{
+  "name": "@hilo/client",
+  "version": "1.0.0",
+  "description": "CLI client for Hi-Lo card game",
+  "main": "dist/index.js",
+  "bin": {
+    "hilo-client": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "hilo",
+    "card-game",
+    "client",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@hilo/shared": "file:../shared",
+    "axios": "^1.6.5",
+    "chalk": "^4.1.2",
+    "socket.io-client": "^4.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
