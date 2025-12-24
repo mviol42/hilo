@@ -22,16 +22,17 @@ The user begins their journey on the LANDING PAGE.
 
 ### GAME PAGE
 - There are a few key zones in the GAME PAGE. The HAND, the FACEUP PILE, and the FACEDOWN PILE.
-- The game begins with a “mulligan” phase where they swap cards from their HAND and the FACEUP PILE.
-- A player is ACTIVE if the game state JSON has the activePlayerId equal to their player id stored in the browser cache
-- A card is a PLAYABLE CARD if it is in the list of playable cards in the game state json.
-- Since a player can only see their HAND and everyone’s FACEUP PILES, those cards should be of type “face up” class. Otherwise, they are face down.
+- First, the HAND design. A player's HAND is displayed on the bottom of of the screen. It should take up 1/10 of the screen. The HAND can be quite large, so if the number of cards would overflow outsite the screen, a scroll wheel should emerge. The HAND should be sorted first in order of rank. i.e. 2, then 3, then 4, and so on.
+- In the SETUP phase, the 6 remaining cards should start in the HAND. They should all be selectable. Above them, there should be 3 card slots and a greyed out confirm button. When a card is selected, it should move that card to one of the free card slots. When all 3 slots are full, the cards in HAND shouldn't be selectable. Cards in the slots should always be selectable, and when clicked return to hand. When all 3 slots are full, the confirm button becomes blue and clickable.
+- Upon clicking confirm, a request gets sent to the backend.
+- When everyone is confirmed, move to turn play.
+- In TURN PLAY, a player can view their HAND. There is a button titled “Show face up cards” which minimizes the hand and brings up the FACEUP PILE. Upon doing so, it gets replaced with a “Hide face up cards” button which reverses this.
+- Since a player can only see their HAND and everyone’s FACEUP PILES, those cards should be face up and display their suit and number. Otherwise, they are face down, and show a generic card backing.
 - If a player is ACTIVE, they should initially see their PLAYABLE CARDS highlighted in green. There should be a subtle animation, fading in over two seconds and fading out over two seconds. This animation is only visible if the card is face up.
 - PLAYABLE CARDS should be selectable by the ACTIVE PLAYER. As the rules state, you can only select cards of the same rank. Upon selecting the first PLAYABLE CARD, only continue to highlight other playable cards of the same suit.
-- There is a button title “submit” which puts all selected cards into the shared PILE.
+- There is a button titled “Submit” which puts all selected cards into the shared PILE.
 - UNPLAYABLE CARDS are not highlighted.
-- There is a button titled “Show face up cards” which minimizes the hand and brings up the FACEUP PILE. Upon doing so, it gets replaced with a “Hide face up cards” button which reverses this.
-- There should be a set of animations corresponding to different kinds of plays. Each animation can start as text starting small at the bottom and rapidly expanding into the middle of the screen.
+- There should be a set of animations corresponding to different kinds of plays. Each animation starts as small text at the bottom of the screen and rapidly expands into larger text in the middle of the screen. Here are examples kinds of plays which we may want:
     - Bonus play - blue text
     - Exploded! Play again - green text
     - No plays available - red text
