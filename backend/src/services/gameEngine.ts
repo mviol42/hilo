@@ -216,7 +216,6 @@ export function getLowestNonSpecialRank(playerState: PlayerGameState): { rank: R
 }
 
 export function determineFirstPlayer(gameState: GameState): PlayerId {
-  let lowestRank: Rank | null = null;
   let lowestValue = Infinity;
   const candidates: PlayerId[] = [];
 
@@ -228,7 +227,6 @@ export function determineFirstPlayer(gameState: GameState): PlayerId {
 
     if (value < lowestValue) {
       lowestValue = value;
-      lowestRank = lowest.rank;
       candidates.length = 0;
       candidates.push(playerId);
     } else if (value === lowestValue) {
@@ -325,7 +323,7 @@ export function playCards(
   }
 
   let newState = { ...gameState };
-  let newPlayerState = { ...playerState };
+  const newPlayerState = { ...playerState };
 
   if (source === 'hand') {
     if (newPlayerState.hand.length === 0) {

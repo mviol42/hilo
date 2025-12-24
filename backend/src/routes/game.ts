@@ -3,8 +3,19 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { Server as SocketIOServer } from 'socket.io';
 import { lobbyService } from '../services/lobbyService';
+import { gameService } from '../services/gameService';
 import { StartGameRequest, StartGameResponse } from '@hilo/shared';
+import { ClientToServerEvents, ServerToClientEvents } from '@hilo/shared';
+
+type TypedServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
+
+let io: TypedServer | null = null;
+
+export function setSocketIO(ioInstance: TypedServer): void {
+  io = ioInstance;
+}
 
 export const gameRouter = Router();
 
@@ -26,24 +37,66 @@ gameRouter.post('/start', (req: Request, res: Response) => {
     // Validate player can start game
     lobbyService.canStartGame(lobbyId, playerId);
 
+    // Get lobby to extract player IDs in turn order
+    const lobby = lobbyService.getLobby(lobbyId);
+    if (!lobby) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Lobby not found',
+      });
+    }
+
     // Transition lobby to in-game status
     lobbyService.transitionToGame(lobbyId);
 
-    // TODO: Initialize game state from lobby using game engine
-    // For now, return a minimal placeholder response
+    // Create game with players from lobby
+    // lobbyId serves as the permanent room ID for Socket.IO
+    const playerIds = Array.from(lobby.players.keys());
+    const gameState = gameService.createGame(lobbyId, playerIds);
+
+    // Return game state for the requesting player
+    const playerView = gameService.getPlayerView(gameState.id, playerId);
+
+    if (!playerView) {
+      throw new Error('Failed to get player view');
+    }
+
     const response: StartGameResponse = {
-      gameState: {
-        id: lobbyId,
-        phase: 'setup',
-        myHand: [],
-        myFaceUp: [],
-        myFaceDownCount: 0,
-        otherPlayers: {},
-        pile: [],
-        deckCount: 52,
-        activePlayerId: playerId,
-      },
+      gameState: playerView,
     };
+
+    // Emit lobby:gameStarting event via Socket.IO (async, don't await)
+    // Broadcast to the room (lobbyId serves as room ID)
+    if (io) {
+      const roomId = lobbyId;
+      const socketIo = io; // Capture to avoid null check inside callback
+      setImmediate(async () => {
+        try {
+          socketIo.to(roomId).emit('lobby:gameStarting', {
+            gameId: gameState.id,
+          });
+
+          // Broadcast initial game state to all players in the room
+          const sockets = await socketIo.in(roomId).fetchSockets();
+          for (const pid of playerIds) {
+            const pView = gameService.getPlayerView(gameState.id, pid);
+            if (pView) {
+              for (const socket of sockets) {
+                const socketData = socket.data as any;
+                if (socketData.playerId === pid) {
+                  socket.emit('game:stateUpdate', {
+                    gameState: pView,
+                  });
+                  break;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error emitting WebSocket events:', error);
+        }
+      });
+    }
 
     res.status(200).json(response);
   } catch (error) {
@@ -77,6 +130,7 @@ gameRouter.post('/start', (req: Request, res: Response) => {
       }
     }
 
+    console.error('Error starting game:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

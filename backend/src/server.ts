@@ -28,8 +28,11 @@ export async function createServer() {
 
   // API routes
   const { lobbyRouter } = await import('./routes/lobby');
-  const { gameRouter } = await import('./routes/game');
+  const { gameRouter, setSocketIO } = await import('./routes/game');
   const { lobbyService } = await import('./services/lobbyService');
+
+  // Pass Socket.IO instance to game router
+  setSocketIO(io);
 
   app.use('/api/lobby', lobbyRouter);
   app.use('/api/game', gameRouter);
@@ -42,7 +45,20 @@ export async function createServer() {
   app.use(notFoundHandler);
   app.use(errorHandler);
 
-  // TODO: Add Socket.IO handlers
+  // Socket.IO event handlers
+  const { registerLobbyHandlers, registerGameHandlers } = await import('./handlers');
+
+  io.on('connection', (socket) => {
+    console.log(`Client connected: ${socket.id}`);
+
+    // Register all event handlers
+    registerLobbyHandlers(io, socket);
+    registerGameHandlers(io, socket);
+
+    socket.on('disconnect', () => {
+      console.log(`Client disconnected: ${socket.id}`);
+    });
+  });
 
   return { app, server, io };
 }
