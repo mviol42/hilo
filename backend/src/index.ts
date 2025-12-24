@@ -6,7 +6,7 @@ import { createServer } from './server';
 import { PORT } from './config/constants';
 
 async function start() {
-  const { app, server } = await createServer();
+  const { server } = await createServer();
 
   server.listen(PORT, () => {
     console.log(`Hi-Lo server running on port ${PORT}`);
