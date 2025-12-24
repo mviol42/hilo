@@ -14,6 +14,7 @@ export interface Lobby {
   leaderId: PlayerId;
   status: LobbyStatus;
   createdAt: Date;
+  lastActivityAt: Date;
 }
 
 export interface LobbyState {
