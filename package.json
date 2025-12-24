@@ -1,0 +1,21 @@
+{
+  "name": "hilo",
+  "version": "1.0.0",
+  "description": "Hi-Lo multiplayer card game",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "backend"
+  ],
+  "scripts": {
+    "install:all": "npm install && cd shared && npm install && cd ../backend && npm install",
+    "build:shared": "cd shared && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build": "npm run build:shared && npm run build:backend",
+    "test": "cd backend && npm run test:all",
+    "dev": "cd backend && npm run dev"
+  },
+  "keywords": ["hilo", "card-game", "multiplayer"],
+  "author": "",
+  "license": "MIT"
+}
