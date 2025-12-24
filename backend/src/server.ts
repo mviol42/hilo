@@ -29,9 +29,13 @@ export async function createServer() {
   // API routes
   const { lobbyRouter } = await import('./routes/lobby');
   const { gameRouter } = await import('./routes/game');
+  const { lobbyService } = await import('./services/lobbyService');
 
   app.use('/api/lobby', lobbyRouter);
   app.use('/api/game', gameRouter);
+
+  // Start lobby cleanup
+  lobbyService.startCleanup();
 
   // Error handling
   const { notFoundHandler, errorHandler } = await import('./middleware/errorHandler');
