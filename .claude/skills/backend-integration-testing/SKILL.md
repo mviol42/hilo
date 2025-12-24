@@ -61,20 +61,23 @@ backend/tests/integration/
 ```typescript
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import { createTestServer } from '../setup';
+import { Express } from 'express';
+import { Server } from 'http';
+import { createTestServer, closeTestServer, TestServer } from '../setup';
 
 describe('Lobby API', () => {
+  let testServer: TestServer;
   let app: Express;
   let server: Server;
 
   beforeAll(async () => {
-    const testEnv = await createTestServer();
-    app = testEnv.app;
-    server = testEnv.server;
+    testServer = await createTestServer();
+    app = testServer.app;
+    server = testServer.server;
   });
 
   afterAll(async () => {
-    await server.close();
+    await closeTestServer(testServer);
   });
 
   describe('POST /api/lobby/create', () => {
@@ -97,14 +100,15 @@ describe('Lobby API', () => {
 ```typescript
 import { io, Socket } from 'socket.io-client';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createTestServer, TEST_PORT } from '../setup';
+import { createTestServer, closeTestServer, TestServer, TEST_PORT } from '../setup';
 
 describe('Lobby WebSocket Events', () => {
+  let testServer: TestServer;
   let socket1: Socket;
   let socket2: Socket;
 
   beforeAll(async () => {
-    await createTestServer();
+    testServer = await createTestServer();
     socket1 = io(`http://localhost:${TEST_PORT}`);
     socket2 = io(`http://localhost:${TEST_PORT}`);
 
@@ -114,9 +118,10 @@ describe('Lobby WebSocket Events', () => {
     ]);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     socket1.disconnect();
     socket2.disconnect();
+    await closeTestServer(testServer);
   });
 
   it('should notify when player joins lobby', async () => {
