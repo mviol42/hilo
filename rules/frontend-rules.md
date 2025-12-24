@@ -1,0 +1,37 @@
+Refer to backend-design.md to view the JSON schema. Each time a play is made, a new game state JSON is passed to the frontend. Refer to hilo-rules.md for game rules.
+
+The user begins their journey on the LANDING PAGE.
+
+### LANDING PAGE 
+- When a user goes to the LANDING PAGE, they are presented with two buttons - “Create Lobby” and “Join Lobby”
+- Create lobby. This has a button titled “Create Lobby”. This sends an HTTP post request to the backend which expects to get back a UUID. The user is taken to the LOBBY PAGE with URL corresponding with the game UUID being passed through URL parameters (i.e. localhost:8000/gameid=asdflkj). The first person to join this room is called the LEADER.
+- Join lobby. There is a text input box with the default text “Enter room id…”. Immediately next to it, there is a button titled “Join”. This text box is meant to accept room ids corresponding to rooms which get sent to the backend with via HTTP post. If an error is returned, that error should be displayed in red text underneath the input box.
+- Once a user has successfully done one of these actions, they proceed to the LOBBY PAGE.
+
+### LOBBY PAGE
+- Copy link - There is a button called “Copy link” which copies the link corresponding with the correct url parameter.
+- The LEADER has the option to click “Begin Game” which starts the game.
+- Each joining player has copy link and waiting bar. 
+- Player id stored in the browser cache and is auto generated upon joining room
+- Default is the previously entered name
+- Player can enter their name which is a cosmetic layer displayed later
+- Upon clicking “Begin Game”, the following happens
+    - Players currently in the lobby are added to a game and the corresponding  player ids are sent to the backend via HTTP post at an “Initialize game” endpoint.
+    - An initial game state, represented by a JSON containing a map of player id to a set of cards is returned.
+    -  Any other player who tries to join this game gets a separate “spectator” screen where they can view all cards visible to any player (FACEUP PILE and HAND).
+
+### GAME PAGE
+- There are a few key zones in the GAME PAGE. The HAND, the FACEUP PILE, and the FACEDOWN PILE.
+- The game begins with a “mulligan” phase where they swap cards from their HAND and the FACEUP PILE.
+- A player is ACTIVE if the game state JSON has the activePlayerId equal to their player id stored in the browser cache
+- A card is a PLAYABLE CARD if it is in the list of playable cards in the game state json.
+- Since a player can only see their HAND and everyone’s FACEUP PILES, those cards should be of type “face up” class. Otherwise, they are face down.
+- If a player is ACTIVE, they should initially see their PLAYABLE CARDS highlighted in green. There should be a subtle animation, fading in over two seconds and fading out over two seconds. This animation is only visible if the card is face up.
+- PLAYABLE CARDS should be selectable by the ACTIVE PLAYER. As the rules state, you can only select cards of the same rank. Upon selecting the first PLAYABLE CARD, only continue to highlight other playable cards of the same suit.
+- There is a button title “submit” which puts all selected cards into the shared PILE.
+- UNPLAYABLE CARDS are not highlighted.
+- There is a button titled “Show face up cards” which minimizes the hand and brings up the FACEUP PILE. Upon doing so, it gets replaced with a “Hide face up cards” button which reverses this.
+- There should be a set of animations corresponding to different kinds of plays. Each animation can start as text starting small at the bottom and rapidly expanding into the middle of the screen.
+    - Bonus play - blue text
+    - Exploded! Play again - green text
+    - No plays available - red text
