@@ -15,6 +15,9 @@ hilo/
 │   │   ├── unit/             # Unit tests
 │   │   └── integration/      # Integration tests
 │   └── package.json
+├── client/                    # CLI client
+│   ├── src/                   # Source code
+│   └── package.json
 ├── .claude/                   # Claude Code skills
 │   └── skills/
 │       ├── backend-unit-testing/
@@ -34,6 +37,7 @@ npm install
 # Or install individually
 cd shared && npm install
 cd backend && npm install
+cd client && npm install
 ```
 
 ### Build
@@ -44,6 +48,9 @@ cd shared && npm run build
 
 # Build backend
 cd backend && npm run build
+
+# Build client
+cd client && npm run build
 
 # Or build everything
 npm run build
@@ -59,6 +66,17 @@ npm run dev
 ```
 
 The server will start on port 3000 (configurable via PORT environment variable).
+
+### Run CLI Client
+
+```bash
+cd client
+npm start
+```
+
+The client will connect to the backend server at `http://localhost:3000` (configurable via SERVER_URL environment variable).
+
+For detailed client usage instructions, see [`client/README.md`](client/README.md).
 
 ### Testing
 
@@ -128,6 +146,7 @@ These skills are automatically discovered by Claude Code when working on the pro
 - **Database**: Redis
 - **Testing**: Vitest
 - **Linting**: ESLint
+- **Client**: Node.js CLI with Socket.IO client, Axios, Chalk
 
 ## Implementation Plan
 
