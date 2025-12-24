@@ -14,8 +14,8 @@
     "types": ["node", "vitest/globals"],
     "baseUrl": ".",
     "paths": {
-      "@hilo/shared": ["../shared/types"],
-      "@hilo/shared/*": ["../shared/types/*"]
+      "@hilo/shared": ["../shared/dist"],
+      "@hilo/shared/*": ["../shared/dist/*"]
     }
   },
   "include": ["src/**/*"],

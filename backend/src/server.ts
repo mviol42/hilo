@@ -26,7 +26,19 @@ export async function createServer() {
     res.json({ status: 'ok' });
   });
 
-  // TODO: Add routes and Socket.IO handlers
+  // API routes
+  const { lobbyRouter } = await import('./routes/lobby');
+  const { gameRouter } = await import('./routes/game');
+
+  app.use('/api/lobby', lobbyRouter);
+  app.use('/api/game', gameRouter);
+
+  // Error handling
+  const { notFoundHandler, errorHandler } = await import('./middleware/errorHandler');
+  app.use(notFoundHandler);
+  app.use(errorHandler);
+
+  // TODO: Add Socket.IO handlers
 
   return { app, server, io };
 }
