@@ -478,7 +478,11 @@ export function pickupPile(gameState: GameState, playerId: PlayerId): GameState 
   }
 
   const newState = { ...gameState };
-  const newPlayerState = { ...playerState };
+  const newPlayerState = {
+    hand: [...playerState.hand],
+    faceUp: [...playerState.faceUp],
+    faceDown: [...playerState.faceDown],
+  };
 
   if (newPlayerState.hand.length > 0) {
     const playableRanks = getPlayableRanks(newPlayerState.hand, newState.pile);

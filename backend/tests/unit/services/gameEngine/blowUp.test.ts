@@ -183,7 +183,7 @@ describe('Blow Up Mechanics', () => {
       game.players.set('p1', {
         hand: [{ rank: '5', suit: 'clubs' }],
         faceUp: [],
-        faceDown: [],
+        faceDown: [{ rank: '3', suit: 'spades' }],
       });
       game.players.set('p2', {
         hand: [{ rank: '7', suit: 'spades' }],

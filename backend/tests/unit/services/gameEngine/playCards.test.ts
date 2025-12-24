@@ -396,20 +396,20 @@ describe('Play Cards', () => {
         .toThrow('All cards must be the same rank');
     });
 
-    it('should throw error if trying to play non-existent card when playable cards exist', () => {
+    it('should throw error if trying to play non-playable rank', () => {
       const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
-      game.pile = [{ rank: '3', suit: 'clubs' }];
+      game.pile = [{ rank: 'K', suit: 'spades' }];
 
       game.players.set('p1', {
-        hand: [{ rank: '5', suit: 'hearts' }],
+        hand: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }],
         faceUp: [],
         faceDown: [],
       });
 
-      expect(() => playCards(game, 'p1', [{ rank: '7', suit: 'diamonds' }], 'hand'))
-        .toThrow('Card not in hand');
+      expect(() => playCards(game, 'p1', [{ rank: '5', suit: 'hearts' }], 'hand'))
+        .toThrow('No Playable Card');
     });
 
     it('should throw error when no cards are playable', () => {
