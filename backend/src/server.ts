@@ -30,6 +30,10 @@ export async function createServer() {
   const { lobbyRouter } = await import('./routes/lobby');
   const { gameRouter, setSocketIO } = await import('./routes/game');
   const { lobbyService } = await import('./services/lobbyService');
+  const { redisService } = await import('./services/redisService');
+
+  // Initialize Redis
+  await redisService.connect();
 
   // Pass Socket.IO instance to game router
   setSocketIO(io);

@@ -15,6 +15,7 @@ import {
   getPlayableCards as getPlayableCardsFromEngine,
 } from './gameEngine';
 import { LobbyId } from '@hilo/shared';
+import { redisService } from './redisService';
 
 export class GameService {
   private games: Map<string, GameState> = new Map();
@@ -36,6 +37,11 @@ export class GameService {
     this.games.set(dealtState.id, dealtState);
     this.roomToGame.set(roomId, dealtState.id);
     this.gameToRoom.set(dealtState.id, roomId);
+
+    // Persist to Redis (non-blocking)
+    redisService.saveGameState(dealtState).catch((err) => {
+      console.error('[GameService] Failed to persist game state to Redis:', err);
+    });
 
     return dealtState;
   }
@@ -69,6 +75,11 @@ export class GameService {
    */
   updateGame(gameId: string, gameState: GameState): void {
     this.games.set(gameId, gameState);
+
+    // Persist to Redis (non-blocking)
+    redisService.saveGameState(gameState).catch((err) => {
+      console.error('[GameService] Failed to persist game state to Redis:', err);
+    });
   }
 
   /**

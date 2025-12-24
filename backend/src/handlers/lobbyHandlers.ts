@@ -10,6 +10,7 @@ import {
 } from '@hilo/shared';
 import { LobbyId, PlayerId } from '@hilo/shared';
 import { lobbyService } from '../services/lobbyService';
+import { redisService } from '../services/redisService';
 
 export type TypedServer = Server<ClientToServerEvents, ServerToClientEvents>;
 export type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -48,6 +49,16 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
       // Store in socket data
       (socket.data as SocketData).playerId = player.id;
       (socket.data as SocketData).lobbyId = lobbyId;
+
+      // Save session to Redis
+      redisService.setPlayerSession({
+        playerId: player.id,
+        lobbyId,
+        socketId: socket.id,
+        lastActive: new Date(),
+      }).catch((err) => {
+        console.error('[LobbyHandlers] Failed to save session:', err);
+      });
 
       // Join Socket.IO room (room persists across lobby and game states)
       await socket.join(roomId);
@@ -98,6 +109,11 @@ function handleLobbyLeave(io: TypedServer, socket: TypedSocket) {
       delete (socket.data as SocketData).playerId;
       delete (socket.data as SocketData).lobbyId;
 
+      // Clear session from Redis
+      redisService.clearPlayerSession(playerId).catch((err) => {
+        console.error('[LobbyHandlers] Failed to clear session:', err);
+      });
+
       // Get updated lobby state (may be null if lobby deleted)
       const lobbyAfter = lobbyService.getLobbyState(lobbyId);
 
@@ -145,6 +161,11 @@ function handleDisconnect(io: TypedServer, socket: TypedSocket) {
 
         // Leave the lobby
         lobbyService.leaveLobby(lobbyId, playerId);
+
+        // Clear session from Redis
+        redisService.clearPlayerSession(playerId).catch((err) => {
+          console.error('[LobbyHandlers] Failed to clear session on disconnect:', err);
+        });
 
         // Get updated lobby state
         const lobbyAfter = lobbyService.getLobbyState(lobbyId);

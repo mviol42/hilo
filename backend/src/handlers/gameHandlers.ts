@@ -9,9 +9,11 @@ import {
   GameSelectFaceUpEvent,
   GamePlayCardsEvent,
   GamePickUpPileEvent,
+  GameLogEntry,
 } from '@hilo/shared';
 import { PlayerId } from '@hilo/shared';
 import { gameService } from '../services/gameService';
+import { redisService } from '../services/redisService';
 
 export type TypedServer = Server<ClientToServerEvents, ServerToClientEvents>;
 export type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -59,6 +61,18 @@ function handleSelectFaceUp(io: TypedServer, socket: TypedSocket) {
       // Select face-up cards
       const updatedGame = gameService.selectFaceUp(gameId, playerId, cardIndices);
 
+      // Log action to Redis
+      const logEntry: GameLogEntry = {
+        timestamp: new Date(),
+        playerId,
+        action: 'select_faceup',
+        cards,
+        description: `Player ${playerId.substring(0, 8)} selected face-up cards`,
+      };
+      redisService.logGameAction(gameId, logEntry).catch((err) => {
+        console.error('[GameHandlers] Failed to log action:', err);
+      });
+
       // Broadcast state update to all players
       await broadcastGameState(io, gameId, updatedGame.turnOrder);
 
@@ -95,6 +109,23 @@ function handlePlayCards(io: TypedServer, socket: TypedSocket) {
 
       // Play the cards
       const { gameState, blowUp, winner } = gameService.playCardsAction(gameId, playerId, cards);
+
+      // Log action to Redis
+      const action: 'play_cards' | 'blow_up' = blowUp ? 'blow_up' : 'play_cards';
+      const description = blowUp
+        ? `Player ${playerId.substring(0, 8)} played ${cards.length} card(s) and blew up the pile`
+        : `Player ${playerId.substring(0, 8)} played ${cards.length} card(s)`;
+
+      const logEntry: GameLogEntry = {
+        timestamp: new Date(),
+        playerId,
+        action,
+        cards,
+        description,
+      };
+      redisService.logGameAction(gameId, logEntry).catch((err) => {
+        console.error('[GameHandlers] Failed to log action:', err);
+      });
 
       const roomId = gameService.getRoomIdFromGame(gameId);
       if (!roomId) {
@@ -146,6 +177,17 @@ function handlePickUpPile(io: TypedServer, socket: TypedSocket) {
 
       // Pick up the pile
       const updatedGame = gameService.pickUpPileAction(gameId, playerId);
+
+      // Log action to Redis
+      const logEntry: GameLogEntry = {
+        timestamp: new Date(),
+        playerId,
+        action: 'pickup_pile',
+        description: `Player ${playerId.substring(0, 8)} picked up the pile`,
+      };
+      redisService.logGameAction(gameId, logEntry).catch((err) => {
+        console.error('[GameHandlers] Failed to log action:', err);
+      });
 
       const roomId = gameService.getRoomIdFromGame(gameId);
       if (!roomId) {

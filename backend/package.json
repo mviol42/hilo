@@ -41,6 +41,7 @@
     "@vitest/coverage-v8": "^1.2.1",
     "eslint": "^8.56.0",
     "nodemon": "^3.0.3",
+    "redis-mock": "^0.56.3",
     "socket.io-client": "^4.6.1",
     "socket.io-mock-ts": "^1.0.2",
     "supertest": "^6.3.4",
