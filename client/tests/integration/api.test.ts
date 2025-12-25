@@ -4,39 +4,25 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ApiClient } from '../../src/api';
-import { createServer } from '../../../backend/src/server';
-import { Server } from 'http';
-import { Server as SocketIOServer } from 'socket.io';
+import { createTestServer, closeTestServer, TestServer } from '../../../backend/tests/integration/setup';
 
 describe('ApiClient Integration Tests', () => {
-  let server: Server;
-  let io: SocketIOServer;
+  let testServer: TestServer;
   let apiClient: ApiClient;
-  const testPort = 3001;
+  const testPort = 3001; // Use same port as backend tests
   const baseURL = `http://localhost:${testPort}`;
 
   beforeAll(async () => {
     // Start test server
-    const result = await createServer();
-    server = result.server;
-    io = result.io;
-
-    await new Promise<void>((resolve) => {
-      server.listen(testPort, () => {
-        resolve();
-      });
-    });
+    testServer = await createTestServer();
 
     // Create API client
     apiClient = new ApiClient(baseURL);
   });
 
   afterAll(async () => {
-    // Close connections
-    io.close();
-    await new Promise<void>((resolve) => {
-      server.close(() => resolve());
-    });
+    // Close test server
+    await closeTestServer(testServer);
   });
 
   describe('Lobby Management', () => {

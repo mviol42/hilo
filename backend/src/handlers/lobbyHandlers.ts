@@ -9,6 +9,7 @@ import { Server, Socket } from 'socket.io';
 import {
   ClientToServerEvents,
   ServerToClientEvents,
+  LobbyJoinEvent,
 } from '@hilo/shared';
 import { LobbyId, PlayerId } from '@hilo/shared';
 import { lobbyService } from '../services/lobbyService';
@@ -27,7 +28,99 @@ interface SocketData {
  * Register all lobby-related event handlers
  */
 export function registerLobbyHandlers(io: TypedServer, socket: TypedSocket): void {
+  socket.on('lobby:join', handleLobbyJoin(io, socket));
+  socket.on('lobby:leave', handleLobbyLeave(io, socket));
   socket.on('disconnect', handleDisconnect(io, socket));
+}
+
+/**
+ * Handle player joining a lobby room via WebSocket
+ * NOTE: This does NOT mutate lobby state. Players must join via HTTP API first.
+ * This handler only subscribes the socket to room events.
+ */
+function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
+  return async (data: LobbyJoinEvent) => {
+    try {
+      const { lobbyId, playerId } = data;
+      const roomId = lobbyId; // lobbyId serves as the permanent room ID
+
+      // Get the lobby
+      const lobby = lobbyService.getLobby(lobbyId);
+      if (!lobby) {
+        throw new Error('Lobby not found');
+      }
+
+      // Verify player exists in lobby (must have joined via HTTP API first)
+      const player = lobby.players.get(playerId);
+      if (!player) {
+        throw new Error('Player not found in lobby');
+      }
+
+      // Update socket ID for the existing player
+      lobbyService.updateSocketId(lobbyId, playerId, socket.id);
+
+      // Store in socket data
+      (socket.data as SocketData).playerId = playerId;
+      (socket.data as SocketData).lobbyId = lobbyId;
+
+      // Save session to Redis
+      redisService.setPlayerSession({
+        playerId,
+        lobbyId,
+        socketId: socket.id,
+        lastActive: new Date(),
+      }).catch((err) => {
+        console.error('[LobbyHandlers] Failed to save session:', err);
+      });
+
+      // Join Socket.IO room (room persists across lobby and game states)
+      await socket.join(roomId);
+
+      // Get updated lobby state
+      const lobbyState = lobbyService.getLobbyState(lobbyId);
+      if (!lobbyState) {
+        throw new Error('Lobby not found after join');
+      }
+
+      // Notify all players in the room (including this socket)
+      io.to(roomId).emit('lobby:playerJoined', {
+        player,
+        lobby: lobbyState,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to join lobby';
+      socket.emit('error', { message: errorMessage } as any);
+    }
+  };
+}
+
+/**
+ * Handle player leaving a lobby room via WebSocket
+ * NOTE: This does NOT mutate lobby state. Players must leave via HTTP API.
+ * This handler only unsubscribes the socket from room events.
+ */
+function handleLobbyLeave(_io: TypedServer, socket: TypedSocket) {
+  return async (data: { lobbyId: LobbyId; playerId: PlayerId }) => {
+    try {
+      const { lobbyId, playerId } = data;
+      const roomId = lobbyId; // lobbyId serves as the permanent room ID
+
+      // Leave Socket.IO room
+      await socket.leave(roomId);
+
+      // Clear socket data
+      delete (socket.data as SocketData).playerId;
+      delete (socket.data as SocketData).lobbyId;
+
+      // Clear session from Redis
+      redisService.clearPlayerSession(playerId).catch((err) => {
+        console.error('[LobbyHandlers] Failed to clear session:', err);
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to leave lobby';
+      socket.emit('error', { message: errorMessage } as any);
+    }
+  };
 }
 
 

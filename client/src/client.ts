@@ -158,6 +158,9 @@ export class GameClient {
     const { playerId, isLeader, lobby } = await this.api.joinLobby(lobbyId, playerName);
     this.state.setLobby(lobbyId, playerId, playerName, isLeader, lobby);
 
+    // Subscribe to lobby events via WebSocket
+    this.socket.emit('lobby:join', { lobbyId, playerId });
+
     this.ui.showLobby(lobby, playerId);
 
     await this.lobbyLoop();
@@ -175,6 +178,8 @@ export class GameClient {
 
       if (command === 'leave') {
         await this.api.leaveLobby(currentState.lobbyId, currentState.playerId);
+        // Unsubscribe from lobby events via WebSocket
+        this.socket.emit('lobby:leave', { lobbyId: currentState.lobbyId, playerId: currentState.playerId });
         this.state.reset();
         break;
       } else if (command === 'start') {
@@ -189,8 +194,12 @@ export class GameClient {
         }
 
         try {
-          await this.api.startGame(currentState.lobbyId, currentState.playerId);
+          const { gameState } = await this.api.startGame(currentState.lobbyId, currentState.playerId);
           this.ui.success('Starting game...');
+
+          // Initialize game state from HTTP response
+          this.state.startGame(gameState.id);
+          this.state.updateGameState(gameState);
 
           await this.gameLoop();
           break;

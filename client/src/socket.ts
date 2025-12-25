@@ -126,4 +126,16 @@ export class SocketClient {
   ): void {
     this.socket.once(event, listener as any);
   }
+
+  /**
+   * Emit an event to the server
+   * NOTE: Only for subscribing to rooms, not for mutations.
+   * All mutations must go through the HTTP API.
+   */
+  emit<K extends keyof ClientToServerEvents>(
+    event: K,
+    data: Parameters<ClientToServerEvents[K]>[0]
+  ): void {
+    (this.socket.emit as any)(event, data);
+  }
 }

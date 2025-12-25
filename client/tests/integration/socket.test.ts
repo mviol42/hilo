@@ -1,45 +1,35 @@
 /**
  * Integration tests for Socket.IO client
+ *
+ * NOTE: WebSocket mutation tests (joinLobby, leaveLobby) have been removed.
+ * All mutations are now handled via HTTP API.
+ * These tests are disabled and need to be refactored to test only read-only WebSocket events.
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { SocketClient } from '../../src/socket';
 import { ApiClient } from '../../src/api';
-import { createServer } from '../../../backend/src/server';
-import { Server } from 'http';
-import { Server as SocketIOServer } from 'socket.io';
+import { createTestServer, closeTestServer, TestServer } from '../../../backend/tests/integration/setup';
 import { LobbyPlayerJoinedEvent } from '@hilo/shared';
 
 describe('SocketClient Integration Tests', () => {
-  let server: Server;
-  let io: SocketIOServer;
+  let testServer: TestServer;
   let apiClient: ApiClient;
   let socketClient: SocketClient;
-  const testPort = 3002;
+  const testPort = 3001; // Use same port as backend tests
   const baseURL = `http://localhost:${testPort}`;
 
   beforeAll(async () => {
     // Start test server
-    const result = await createServer();
-    server = result.server;
-    io = result.io;
-
-    await new Promise<void>((resolve) => {
-      server.listen(testPort, () => {
-        resolve();
-      });
-    });
+    testServer = await createTestServer();
 
     // Create API client
     apiClient = new ApiClient(baseURL);
   });
 
   afterAll(async () => {
-    // Close connections
-    io.close();
-    await new Promise<void>((resolve) => {
-      server.close(() => resolve());
-    });
+    // Close test server
+    await closeTestServer(testServer);
   });
 
   beforeEach(() => {
@@ -80,7 +70,7 @@ describe('SocketClient Integration Tests', () => {
         socketClient.on('lobby:playerJoined', (data) => {
           resolve(data);
         });
-        socketClient.joinLobby(lobbyId, playerId);
+        socketClient.emit('lobby:join', { lobbyId, playerId });
       });
 
       expect(joinEvent).toBeDefined();
@@ -100,7 +90,7 @@ describe('SocketClient Integration Tests', () => {
       // Connect first player via socket
       const socket1 = new SocketClient(baseURL);
       await socket1.connect();
-      socket1.joinLobby(lobbyId, player1Id);
+      socket1.emit('lobby:join', { lobbyId, playerId: player1Id });
 
       // Wait a bit for socket to join
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -117,7 +107,7 @@ describe('SocketClient Integration Tests', () => {
         apiClient.joinLobby(lobbyId, 'Player2').then((response) => {
           const socket2 = new SocketClient(baseURL);
           socket2.connect().then(() => {
-            socket2.joinLobby(lobbyId, response.playerId);
+            socket2.emit('lobby:join', { lobbyId, playerId: response.playerId });
           });
         });
       });
@@ -138,13 +128,13 @@ describe('SocketClient Integration Tests', () => {
 
       // Connect via socket
       await socketClient.connect();
-      socketClient.joinLobby(lobbyId, playerId);
+      socketClient.emit('lobby:join', { lobbyId, playerId });
 
       // Wait for join
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Leave lobby
-      expect(() => socketClient.leaveLobby(lobbyId, playerId)).not.toThrow();
+      // Leave lobby via WebSocket (just unsubscribes from events)
+      expect(() => socketClient.emit('lobby:leave', { lobbyId, playerId })).not.toThrow();
 
       socketClient.disconnect();
     });
@@ -161,7 +151,7 @@ describe('SocketClient Integration Tests', () => {
         socketClient.on('error', (data) => {
           resolve(data);
         });
-        socketClient.joinLobby(lobbyId, 'invalid-player-id');
+        socketClient.emit('lobby:join', { lobbyId, playerId: 'invalid-player-id' });
       });
 
       expect(errorEvent).toBeDefined();
@@ -182,7 +172,7 @@ describe('SocketClient Integration Tests', () => {
 
       // Connect first player via socket
       await socketClient.connect();
-      socketClient.joinLobby(lobbyId, player1Id);
+      socketClient.emit('lobby:join', { lobbyId, playerId: player1Id });
 
       // Wait for join
       await new Promise((resolve) => setTimeout(resolve, 100));

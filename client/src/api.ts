@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { LobbyId, LobbyState } from '@hilo/shared/types/lobby';
 import { PlayerId } from '@hilo/shared/types/player';
 import { PlayerView } from '@hilo/shared/types/game';
-import { Card } from '@hilo/shared/types/cards';
+import { Card } from '@hilo/shared/types/card';
 import { logger } from './logger';
 
 export interface CreateLobbyResponse {

@@ -3,6 +3,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { Server as SocketIOServer } from 'socket.io';
 import { lobbyService } from '../services/lobbyService';
 import {
   CreateLobbyResponse,
@@ -10,7 +11,17 @@ import {
   JoinLobbyResponse,
   LeaveLobbyRequest,
   LeaveLobbyResponse,
+  ClientToServerEvents,
+  ServerToClientEvents,
 } from '@hilo/shared';
+
+type TypedServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
+
+let io: TypedServer | null = null;
+
+export function setLobbySocketIO(ioInstance: TypedServer): void {
+  io = ioInstance;
+}
 
 export const lobbyRouter = Router();
 
@@ -135,6 +146,11 @@ lobbyRouter.post('/leave', (req: Request, res: Response) => {
       });
     }
 
+    // Get lobby state before leaving to check leader status
+    const lobbyBefore = lobbyService.getLobby(lobbyId);
+    const wasLeader = lobbyBefore ? lobbyBefore.leaderId === playerId : false;
+    const oldLeaderId = lobbyBefore?.leaderId;
+
     lobbyService.leaveLobby(lobbyId, playerId);
 
     // Get updated lobby state (may be null if lobby was removed)
@@ -144,6 +160,31 @@ lobbyRouter.post('/leave', (req: Request, res: Response) => {
       success: true,
       lobby: lobbyState || undefined,
     };
+
+    // Emit WebSocket events (async, don't block HTTP response)
+    if (io && lobbyState) {
+      const roomId = lobbyId;
+      const socketIo = io;
+      setImmediate(() => {
+        try {
+          // Notify players in room that someone left
+          socketIo.to(roomId).emit('lobby:playerLeft', {
+            playerId,
+            lobby: lobbyState,
+          });
+
+          // If leader changed, notify players
+          if (wasLeader && lobbyState.leaderId !== oldLeaderId) {
+            socketIo.to(roomId).emit('lobby:leaderChanged', {
+              newLeaderId: lobbyState.leaderId,
+              lobby: lobbyState,
+            });
+          }
+        } catch (error) {
+          console.error('Error emitting WebSocket events:', error);
+        }
+      });
+    }
 
     res.status(200).json(response);
   } catch (error) {
