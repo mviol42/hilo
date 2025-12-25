@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { LobbyId, LobbyState } from '@hilo/shared/types/lobby';
 import { PlayerId } from '@hilo/shared/types/player';
+import { logger } from './logger';
 
 export interface CreateLobbyResponse {
   lobbyId: LobbyId;
@@ -23,6 +24,58 @@ export class ApiClient {
         'Content-Type': 'application/json',
       },
     });
+
+    this.setupLogging();
+  }
+
+  private setupLogging(): void {
+    // Request interceptor
+    this.axios.interceptors.request.use(
+      (config) => {
+        logger.info(
+          `HTTP Request: ${JSON.stringify({
+            method: config.method?.toUpperCase(),
+            route: config.url,
+            body: config.data,
+            timestamp: new Date().toISOString(),
+          })}`
+        );
+        return config;
+      },
+      (error) => {
+        logger.error(`HTTP Request Error: ${error.message}`);
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor
+    this.axios.interceptors.response.use(
+      (response) => {
+        logger.info(
+          `HTTP Response: ${JSON.stringify({
+            method: response.config.method?.toUpperCase(),
+            route: response.config.url,
+            statusCode: response.status,
+            timestamp: new Date().toISOString(),
+          })}`
+        );
+        return response;
+      },
+      (error) => {
+        const statusCode = error.response?.status || 'N/A';
+        const route = error.config?.url || 'unknown';
+        logger.error(
+          `HTTP Response Error: ${JSON.stringify({
+            method: error.config?.method?.toUpperCase(),
+            route,
+            statusCode,
+            message: error.message,
+            timestamp: new Date().toISOString(),
+          })}`
+        );
+        return Promise.reject(error);
+      }
+    );
   }
 
   async createLobby(): Promise<CreateLobbyResponse> {

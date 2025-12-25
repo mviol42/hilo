@@ -23,7 +23,8 @@
     "@hilo/shared": "file:../shared",
     "axios": "^1.6.5",
     "chalk": "^4.1.2",
-    "socket.io-client": "^4.6.1"
+    "socket.io-client": "^4.6.1",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

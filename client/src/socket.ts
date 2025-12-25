@@ -10,6 +10,7 @@ import {
 import { LobbyId } from '@hilo/shared/types/lobby';
 import { PlayerId } from '@hilo/shared/types/player';
 import { Card } from '@hilo/shared/types/card';
+import { logger } from './logger';
 
 export type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -24,16 +25,63 @@ export class SocketClient {
       reconnectionDelay: 1000,
     });
 
+    this.setupLogging();
     this.setupErrorHandling();
+  }
+
+  private setupLogging(): void {
+    // Log all incoming events
+    this.socket.onAny((eventName, ...args) => {
+      logger.info(
+        `Socket Message Received: ${JSON.stringify({
+          eventName,
+          payload: args,
+          socketId: this.socket.id,
+          timestamp: new Date().toISOString(),
+        })}`
+      );
+    });
+
+    // Log all outgoing events
+    this.socket.onAnyOutgoing((eventName, ...args) => {
+      logger.info(
+        `Socket Message Sent: ${JSON.stringify({
+          eventName,
+          payload: args,
+          socketId: this.socket.id,
+          timestamp: new Date().toISOString(),
+        })}`
+      );
+    });
+
+    // Log connection events
+    this.socket.on('connect', () => {
+      logger.info(
+        `Socket Connected: ${JSON.stringify({
+          socketId: this.socket.id,
+          timestamp: new Date().toISOString(),
+        })}`
+      );
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      logger.info(
+        `Socket Disconnected: ${JSON.stringify({
+          socketId: this.socket.id,
+          reason,
+          timestamp: new Date().toISOString(),
+        })}`
+      );
+    });
   }
 
   private setupErrorHandling(): void {
     this.socket.on('connect_error', (error) => {
-      console.error('Connection error:', error.message);
+      logger.error(`Connection error: ${error.message}`);
     });
 
     this.socket.on('error', (data) => {
-      console.error('Server error:', data.message);
+      logger.error(`Server error: ${data.message}`);
     });
   }
 

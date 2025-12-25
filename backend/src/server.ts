@@ -6,6 +6,9 @@ import express, { Express } from 'express';
 import { createServer as createHttpServer, Server } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
+import { httpLogger } from './middleware/httpLogger';
+import { createSocketLogger } from './middleware/socketLogger';
+import { logger } from './config/logger';
 
 export async function createServer() {
   const app: Express = express();
@@ -17,9 +20,13 @@ export async function createServer() {
     },
   });
 
+  // Socket.IO middleware
+  io.use(createSocketLogger());
+
   // Middleware
   app.use(cors());
   app.use(express.json());
+  app.use(httpLogger);
 
   // Health check
   app.get('/health', (req, res) => {
@@ -53,14 +60,14 @@ export async function createServer() {
   const { registerLobbyHandlers, registerGameHandlers } = await import('./handlers');
 
   io.on('connection', (socket) => {
-    console.log(`Client connected: ${socket.id}`);
+    logger.info(`Client connected: ${socket.id}`);
 
     // Register all event handlers
     registerLobbyHandlers(io, socket);
     registerGameHandlers(io, socket);
 
     socket.on('disconnect', () => {
-      console.log(`Client disconnected: ${socket.id}`);
+      logger.info(`Client disconnected: ${socket.id}`);
     });
   });
 
