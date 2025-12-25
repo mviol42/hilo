@@ -158,8 +158,8 @@ export class GameClient {
     const { playerId, isLeader, lobby } = await this.api.joinLobby(lobbyId, playerName);
     this.state.setLobby(lobbyId, playerId, playerName, isLeader, lobby);
 
-    // Subscribe to lobby events via WebSocket
-    this.socket.emit('lobby:join', { lobbyId, playerId });
+    // Reconnect socket with playerId and lobbyId for automatic subscription
+    this.socket.reconnect(playerId, lobbyId);
 
     this.ui.showLobby(lobby, playerId);
 
@@ -178,8 +178,6 @@ export class GameClient {
 
       if (command === 'leave') {
         await this.api.leaveLobby(currentState.lobbyId, currentState.playerId);
-        // Unsubscribe from lobby events via WebSocket
-        this.socket.emit('lobby:leave', { lobbyId: currentState.lobbyId, playerId: currentState.playerId });
         this.state.reset();
         break;
       } else if (command === 'start') {

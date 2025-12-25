@@ -5,6 +5,7 @@
 import { Router, Request, Response } from 'express';
 import { Server as SocketIOServer } from 'socket.io';
 import { lobbyService } from '../services/lobbyService';
+import { notificationService } from '../services/notificationService';
 import {
   CreateLobbyResponse,
   JoinLobbyRequest,
@@ -17,10 +18,8 @@ import {
 
 type TypedServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
 
-let io: TypedServer | null = null;
-
 export function setLobbySocketIO(ioInstance: TypedServer): void {
-  io = ioInstance;
+  notificationService.setSocketIO(ioInstance);
 }
 
 export const lobbyRouter = Router();
@@ -100,6 +99,9 @@ lobbyRouter.post('/join', (req: Request, res: Response) => {
     };
 
     res.status(200).json(response);
+
+    // Send notification after successful response
+    notificationService.notifyPlayerJoined(lobbyId, player, lobbyState);
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === 'Lobby not found') {
@@ -161,32 +163,17 @@ lobbyRouter.post('/leave', (req: Request, res: Response) => {
       lobby: lobbyState || undefined,
     };
 
-    // Emit WebSocket events (async, don't block HTTP response)
-    if (io && lobbyState) {
-      const roomId = lobbyId;
-      const socketIo = io;
-      setImmediate(() => {
-        try {
-          // Notify players in room that someone left
-          socketIo.to(roomId).emit('lobby:playerLeft', {
-            playerId,
-            lobby: lobbyState,
-          });
-
-          // If leader changed, notify players
-          if (wasLeader && lobbyState.leaderId !== oldLeaderId) {
-            socketIo.to(roomId).emit('lobby:leaderChanged', {
-              newLeaderId: lobbyState.leaderId,
-              lobby: lobbyState,
-            });
-          }
-        } catch (error) {
-          console.error('Error emitting WebSocket events:', error);
-        }
-      });
-    }
-
     res.status(200).json(response);
+
+    // Send notifications after successful response
+    if (lobbyState) {
+      notificationService.notifyPlayerLeft(lobbyId, playerId, lobbyState);
+
+      // If leader changed, notify players
+      if (wasLeader && lobbyState.leaderId !== oldLeaderId) {
+        notificationService.notifyLeaderChanged(lobbyId, lobbyState.leaderId, lobbyState);
+      }
+    }
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === 'Lobby not found') {

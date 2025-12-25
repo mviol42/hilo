@@ -8,11 +8,6 @@ import { PlayerView } from './game';
 
 // Lobby events
 
-export interface LobbyJoinEvent {
-  lobbyId: LobbyId;
-  playerId: PlayerId;
-}
-
 export interface LobbyPlayerJoinedEvent {
   player: Player;
   lobby: LobbyState;
@@ -56,10 +51,9 @@ export interface GamePlayerWonEvent {
 
 // Client-to-Server event map
 // NOTE: WebSockets are READ-ONLY for the client. All mutations go through HTTP API.
-// These events are only for subscribing/unsubscribing to room notifications.
+// Subscriptions are handled automatically server-side via playerId/lobbyId in connection handshake.
 export interface ClientToServerEvents {
-  'lobby:join': (data: LobbyJoinEvent) => void;
-  'lobby:leave': (data: { lobbyId: LobbyId; playerId: PlayerId }) => void;
+  // No client-to-server events - all subscriptions are automatic
 }
 
 // Error event

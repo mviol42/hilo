@@ -57,18 +57,59 @@ export async function createServer() {
   app.use(notFoundHandler);
   app.use(errorHandler);
 
-  // Socket.IO event handlers
-  const { registerLobbyHandlers, registerGameHandlers } = await import('./handlers');
-
   io.on('connection', (socket) => {
-    logger.info(`Client connected: ${socket.id}`);
+    const playerId = socket.handshake.query.playerId as string | undefined;
+    const lobbyId = socket.handshake.query.lobbyId as string | undefined;
 
-    // Register all event handlers
-    registerLobbyHandlers(io, socket);
-    registerGameHandlers(io, socket);
+    logger.info(`Client connected: ${socket.id}`, { playerId, lobbyId });
 
-    socket.on('disconnect', () => {
-      logger.info(`Client disconnected: ${socket.id}`);
+    // Update player's socketId if they provided playerId and lobbyId
+    if (playerId && lobbyId) {
+      try {
+        lobbyService.updateSocketId(lobbyId, playerId, socket.id);
+        logger.info(`Updated socketId for player ${playerId} in lobby ${lobbyId}`);
+      } catch (error) {
+        logger.error('Failed to update socketId:', error);
+      }
+    }
+
+    socket.on('disconnect', async () => {
+      logger.info(`Client disconnected: ${socket.id}`, { playerId, lobbyId });
+
+      // Handle disconnection - remove player from lobby if applicable
+      if (playerId && lobbyId) {
+        try {
+          const lobbyBefore = lobbyService.getLobby(lobbyId);
+          if (!lobbyBefore) {
+            return;
+          }
+
+          const wasLeader = lobbyBefore.leaderId === playerId;
+          const oldLeaderId = lobbyBefore.leaderId;
+
+          // Leave the lobby
+          lobbyService.leaveLobby(lobbyId, playerId);
+
+          // Clear session from Redis
+          redisService.clearPlayerSession(playerId).catch((err) => {
+            logger.error('Failed to clear session on disconnect:', err);
+          });
+
+          // Get updated lobby state and notify remaining players
+          const lobbyAfter = lobbyService.getLobbyState(lobbyId);
+          if (lobbyAfter) {
+            const { notificationService } = await import('./services/notificationService');
+            notificationService.notifyPlayerLeft(lobbyId, playerId, lobbyAfter);
+
+            // If leader changed, notify players
+            if (wasLeader && lobbyAfter.leaderId !== oldLeaderId) {
+              notificationService.notifyLeaderChanged(lobbyId, lobbyAfter.leaderId, lobbyAfter);
+            }
+          }
+        } catch (error) {
+          logger.error('Error handling disconnect:', error);
+        }
+      }
     });
   });
 

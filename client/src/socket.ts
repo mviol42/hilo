@@ -78,8 +78,13 @@ export class SocketClient {
     });
   }
 
-  connect(): Promise<void> {
+  connect(playerId?: string, lobbyId?: string): Promise<void> {
     return new Promise((resolve, reject) => {
+      // Update connection options with query params if provided
+      if (playerId && lobbyId) {
+        this.socket.io.opts.query = { playerId, lobbyId };
+      }
+
       this.socket.connect();
 
       const timeout = setTimeout(() => {
@@ -96,6 +101,11 @@ export class SocketClient {
         reject(error);
       });
     });
+  }
+
+  reconnect(playerId: string, lobbyId: string): void {
+    this.socket.io.opts.query = { playerId, lobbyId };
+    this.socket.connect();
   }
 
   disconnect(): void {
@@ -127,15 +137,4 @@ export class SocketClient {
     this.socket.once(event, listener as any);
   }
 
-  /**
-   * Emit an event to the server
-   * NOTE: Only for subscribing to rooms, not for mutations.
-   * All mutations must go through the HTTP API.
-   */
-  emit<K extends keyof ClientToServerEvents>(
-    event: K,
-    data: Parameters<ClientToServerEvents[K]>[0]
-  ): void {
-    (this.socket.emit as any)(event, data);
-  }
 }
