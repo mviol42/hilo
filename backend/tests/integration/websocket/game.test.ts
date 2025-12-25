@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { v4 as uuidv4 } from 'uuid';
 import { createTestServer, closeTestServer, TestServer } from '../setup';
 import {
   createSocketClient,
@@ -43,6 +44,19 @@ describe('WebSocket Game Events', () => {
       // Create lobby
       const lobbyRes = await request(testServer.app).post('/api/lobby/create').expect(201);
       const { lobbyId } = lobbyRes.body;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
+
+      // Join via HTTP first
+      await request(testServer.app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId1, playerName: 'Player 1' })
+        .expect(200);
+
+      await request(testServer.app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId2, playerName: 'Player 2' })
+        .expect(200);
 
       // Connect sockets
       const socket1 = createSocketClient();
@@ -52,11 +66,10 @@ describe('WebSocket Game Events', () => {
       sockets.push(socket1, socket2);
 
       // Join lobby via WebSocket
-      socket1.emit('lobby:join', { lobbyId, playerName: 'Player 1' });
-      const join1Event = await waitForEvent(socket1, 'lobby:playerJoined');
-      const player1Id = join1Event.player.id;
+      socket1.emit('lobby:join', { lobbyId, playerId: playerId1 });
+      await waitForEvent(socket1, 'lobby:playerJoined');
 
-      socket2.emit('lobby:join', { lobbyId, playerName: 'Player 2' });
+      socket2.emit('lobby:join', { lobbyId, playerId: playerId2 });
       await waitForEvent(socket2, 'lobby:playerJoined');
 
       // Start game
@@ -67,7 +80,7 @@ describe('WebSocket Game Events', () => {
 
       await request(testServer.app)
         .post('/api/game/start')
-        .send({ lobbyId, playerId: player1Id })
+        .send({ lobbyId, playerId: playerId1 })
         .expect(200);
 
       const [gameStarting1, gameStarting2, stateUpdate1, stateUpdate2] = await Promise.all([
@@ -274,6 +287,19 @@ async function setupGame(testServer: TestServer) {
   // Create lobby
   const lobbyRes = await request(testServer.app).post('/api/lobby/create').expect(201);
   const { lobbyId } = lobbyRes.body;
+  const playerId1 = uuidv4();
+  const playerId2 = uuidv4();
+
+  // Join via HTTP first
+  await request(testServer.app)
+    .post('/api/lobby/join')
+    .send({ lobbyId, playerId: playerId1, playerName: 'Player 1' })
+    .expect(200);
+
+  await request(testServer.app)
+    .post('/api/lobby/join')
+    .send({ lobbyId, playerId: playerId2, playerName: 'Player 2' })
+    .expect(200);
 
   // Connect sockets
   const socket1 = createSocketClient();
@@ -281,19 +307,17 @@ async function setupGame(testServer: TestServer) {
   await connectSocket(socket1);
   await connectSocket(socket2);
 
-  // Join lobby via WebSocket (this creates the players)
-  socket1.emit('lobby:join', { lobbyId, playerName: 'Player 1' });
-  const join1Event = await waitForEvent(socket1, 'lobby:playerJoined');
-  const player1Id = join1Event.player.id;
+  // Join lobby via WebSocket
+  socket1.emit('lobby:join', { lobbyId, playerId: playerId1 });
+  await waitForEvent(socket1, 'lobby:playerJoined');
 
-  socket2.emit('lobby:join', { lobbyId, playerName: 'Player 2' });
-  const join2Event = await waitForEvent(socket2, 'lobby:playerJoined');
-  const player2Id = join2Event.player.id;
+  socket2.emit('lobby:join', { lobbyId, playerId: playerId2 });
+  await waitForEvent(socket2, 'lobby:playerJoined');
 
   // Start game
   const response = await request(testServer.app)
     .post('/api/game/start')
-    .send({ lobbyId, playerId: player1Id })
+    .send({ lobbyId, playerId: playerId1 })
     .expect(200);
 
   const gameId = response.body.gameState.id;
@@ -302,7 +326,7 @@ async function setupGame(testServer: TestServer) {
   await waitForEvent(socket1, 'game:stateUpdate');
   await waitForEvent(socket2, 'game:stateUpdate');
 
-  return { gameId, socket1, socket2, player1Id, player2Id, lobbyId };
+  return { gameId, socket1, socket2, player1Id: playerId1, player2Id: playerId2, lobbyId };
 }
 
 /**

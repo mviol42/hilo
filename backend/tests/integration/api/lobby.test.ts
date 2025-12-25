@@ -6,6 +6,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { Express } from 'express';
 import { Server } from 'http';
+import { v4 as uuidv4 } from 'uuid';
 import { createTestServer, closeTestServer, TestServer } from '../setup';
 import { lobbyService } from '../../../src/services/lobbyService';
 import { CreateLobbyResponse, JoinLobbyResponse } from '@hilo/shared';
@@ -73,17 +74,18 @@ describe('Lobby API', () => {
         .expect(201);
 
       const lobbyId = createResponse.body.lobbyId;
+      const playerId = uuidv4();
 
       // Join lobby
       const response = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Alice' })
+        .send({ lobbyId, playerId, playerName: 'Alice' })
         .expect(200)
         .expect('Content-Type', /json/);
 
       const body = response.body as JoinLobbyResponse;
 
-      expect(body.playerId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      expect(body.playerId).toBe(playerId);
       expect(body.isLeader).toBe(true);
       expect(body.lobby).toBeDefined();
       expect(body.lobby.id).toBe(lobbyId);
@@ -98,10 +100,11 @@ describe('Lobby API', () => {
         .expect(201);
 
       const lobbyId = createResponse.body.lobbyId;
+      const playerId = uuidv4();
 
       const response = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Alice' })
+        .send({ lobbyId, playerId, playerName: 'Alice' })
         .expect(200);
 
       expect(response.body.isLeader).toBe(true);
@@ -114,17 +117,19 @@ describe('Lobby API', () => {
         .expect(201);
 
       const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
 
       // First player joins
       await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Alice' })
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
         .expect(200);
 
       // Second player joins
       const response = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Bob' })
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
         .expect(200);
 
       expect(response.body.isLeader).toBe(false);
@@ -137,10 +142,11 @@ describe('Lobby API', () => {
         .expect(201);
 
       const lobbyId = createResponse.body.lobbyId;
+      const playerId = uuidv4();
 
       const response = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId })
+        .send({ lobbyId, playerId })
         .expect(200);
 
       expect(response.body.lobby.players[0].name).toBe('Player 1');
@@ -157,9 +163,11 @@ describe('Lobby API', () => {
     });
 
     it('should return 404 for non-existent lobby', async () => {
+      const playerId = uuidv4();
+      const nonExistentLobbyId = uuidv4();
       const response = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId: 'non-existent-id', playerName: 'Alice' })
+        .send({ lobbyId: nonExistentLobbyId, playerId, playerName: 'Alice' })
         .expect(404);
 
       expect(response.body).toHaveProperty('error');
@@ -173,15 +181,18 @@ describe('Lobby API', () => {
         .expect(201);
 
       const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
+      const playerId3 = uuidv4();
 
       await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Alice' })
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
         .expect(200);
 
       await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Bob' })
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
         .expect(200);
 
       // Transition to game
@@ -190,7 +201,7 @@ describe('Lobby API', () => {
       // Try to join
       const response = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Charlie' })
+        .send({ lobbyId, playerId: playerId3, playerName: 'Charlie' })
         .expect(409);
 
       expect(response.body).toHaveProperty('error');

@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { v4 as uuidv4 } from 'uuid';
 import { LobbyService } from '../../../src/services/lobbyService';
 
 describe('LobbyService', () => {
@@ -41,7 +42,7 @@ describe('LobbyService', () => {
   describe('joinLobby', () => {
     it('should add player to lobby', () => {
       const lobby = service.createLobby();
-      const player = service.joinLobby(lobby.id, 'Alice');
+      const player = service.joinLobby(lobby.id, uuidv4(), 'Alice');
 
       expect(player).toBeDefined();
       expect(player.name).toBe('Alice');
@@ -50,7 +51,7 @@ describe('LobbyService', () => {
 
     it('should make first player the leader', () => {
       const lobby = service.createLobby();
-      const player = service.joinLobby(lobby.id, 'Alice');
+      const player = service.joinLobby(lobby.id, uuidv4(), 'Alice');
 
       expect(player.isLeader).toBe(true);
       expect(lobby.leaderId).toBe(player.id);
@@ -58,16 +59,16 @@ describe('LobbyService', () => {
 
     it('should not make second player the leader', () => {
       const lobby = service.createLobby();
-      service.joinLobby(lobby.id, 'Alice');
-      const player2 = service.joinLobby(lobby.id, 'Bob');
+      service.joinLobby(lobby.id, uuidv4(), 'Alice');
+      const player2 = service.joinLobby(lobby.id, uuidv4(), 'Bob');
 
       expect(player2.isLeader).toBe(false);
     });
 
     it('should use default name if not provided', () => {
       const lobby = service.createLobby();
-      const player1 = service.joinLobby(lobby.id);
-      const player2 = service.joinLobby(lobby.id);
+      const player1 = service.joinLobby(lobby.id, uuidv4());
+      const player2 = service.joinLobby(lobby.id, uuidv4());
 
       expect(player1.name).toBe('Player 1');
       expect(player2.name).toBe('Player 2');
@@ -75,19 +76,29 @@ describe('LobbyService', () => {
 
     it('should throw error for non-existent lobby', () => {
       expect(() => {
-        service.joinLobby('non-existent-id', 'Alice');
+        service.joinLobby('non-existent-id', uuidv4(), 'Alice');
       }).toThrow('Lobby not found');
     });
 
     it('should throw error for lobby already in game', () => {
       const lobby = service.createLobby();
-      service.joinLobby(lobby.id, 'Alice');
-      service.joinLobby(lobby.id, 'Bob');
+      service.joinLobby(lobby.id, uuidv4(), 'Alice');
+      service.joinLobby(lobby.id, uuidv4(), 'Bob');
       service.transitionToGame(lobby.id);
 
       expect(() => {
-        service.joinLobby(lobby.id, 'Charlie');
+        service.joinLobby(lobby.id, uuidv4(), 'Charlie');
       }).toThrow('Lobby is already in game');
+    });
+
+    it('should throw error for duplicate player ID', () => {
+      const lobby = service.createLobby();
+      const playerId = uuidv4();
+      service.joinLobby(lobby.id, playerId, 'Alice');
+
+      expect(() => {
+        service.joinLobby(lobby.id, playerId, 'Bob');
+      }).toThrow('Player ID already exists in this lobby');
     });
   });
 
@@ -109,8 +120,8 @@ describe('LobbyService', () => {
   describe('getLobbyState', () => {
     it('should return serializable lobby state', () => {
       const lobby = service.createLobby();
-      const player1 = service.joinLobby(lobby.id, 'Alice');
-      const player2 = service.joinLobby(lobby.id, 'Bob');
+      const player1 = service.joinLobby(lobby.id, uuidv4(), 'Alice');
+      const player2 = service.joinLobby(lobby.id, uuidv4(), 'Bob');
 
       const state = service.getLobbyState(lobby.id);
 
@@ -133,8 +144,8 @@ describe('LobbyService', () => {
   describe('canStartGame', () => {
     it('should return true when leader with 2+ players', () => {
       const lobby = service.createLobby();
-      const leader = service.joinLobby(lobby.id, 'Alice');
-      service.joinLobby(lobby.id, 'Bob');
+      const leader = service.joinLobby(lobby.id, uuidv4(), 'Alice');
+      service.joinLobby(lobby.id, uuidv4(), 'Bob');
 
       expect(service.canStartGame(lobby.id, leader.id)).toBe(true);
     });
@@ -147,8 +158,8 @@ describe('LobbyService', () => {
 
     it('should throw error for non-leader', () => {
       const lobby = service.createLobby();
-      service.joinLobby(lobby.id, 'Alice');
-      const player2 = service.joinLobby(lobby.id, 'Bob');
+      service.joinLobby(lobby.id, uuidv4(), 'Alice');
+      const player2 = service.joinLobby(lobby.id, uuidv4(), 'Bob');
 
       expect(() => {
         service.canStartGame(lobby.id, player2.id);
@@ -157,7 +168,7 @@ describe('LobbyService', () => {
 
     it('should throw error with less than 2 players', () => {
       const lobby = service.createLobby();
-      const leader = service.joinLobby(lobby.id, 'Alice');
+      const leader = service.joinLobby(lobby.id, uuidv4(), 'Alice');
 
       expect(() => {
         service.canStartGame(lobby.id, leader.id);
@@ -166,8 +177,8 @@ describe('LobbyService', () => {
 
     it('should throw error if game already started', () => {
       const lobby = service.createLobby();
-      const leader = service.joinLobby(lobby.id, 'Alice');
-      service.joinLobby(lobby.id, 'Bob');
+      const leader = service.joinLobby(lobby.id, uuidv4(), 'Alice');
+      service.joinLobby(lobby.id, uuidv4(), 'Bob');
       service.transitionToGame(lobby.id);
 
       expect(() => {
@@ -179,8 +190,8 @@ describe('LobbyService', () => {
   describe('transitionToGame', () => {
     it('should change lobby status to in_game', () => {
       const lobby = service.createLobby();
-      service.joinLobby(lobby.id, 'Alice');
-      service.joinLobby(lobby.id, 'Bob');
+      service.joinLobby(lobby.id, uuidv4(), 'Alice');
+      service.joinLobby(lobby.id, uuidv4(), 'Bob');
 
       service.transitionToGame(lobby.id);
 

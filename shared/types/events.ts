@@ -11,7 +11,7 @@ import { PlayerView } from './game';
 
 export interface LobbyJoinEvent {
   lobbyId: LobbyId;
-  playerName?: string;
+  playerId: PlayerId;
 }
 
 export interface LobbyPlayerJoinedEvent {

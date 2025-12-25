@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 import { LobbyId, LobbyState } from '@hilo/shared/types/lobby';
 import { PlayerId } from '@hilo/shared/types/player';
 import { logger } from './logger';
@@ -84,8 +85,14 @@ export class ApiClient {
   }
 
   async joinLobby(lobbyId: LobbyId, playerName?: string): Promise<JoinLobbyResponse> {
+    // Generate player ID locally
+    const playerId = uuidv4();
+
+    logger.debug(`Generated local player ID: ${playerId} for player: ${playerName || 'Anonymous'}`);
+
     const response = await this.axios.post<JoinLobbyResponse>('/api/lobby/join', {
       lobbyId,
+      playerId,
       playerName,
     });
     return response.data;

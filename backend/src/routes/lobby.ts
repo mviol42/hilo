@@ -15,6 +15,14 @@ import {
 export const lobbyRouter = Router();
 
 /**
+ * Validate UUID format (v4)
+ */
+function isValidUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+
+/**
  * POST /api/lobby/create
  * Create a new lobby
  */
@@ -41,7 +49,7 @@ lobbyRouter.post('/create', (req: Request, res: Response) => {
  */
 lobbyRouter.post('/join', (req: Request, res: Response) => {
   try {
-    const { lobbyId, playerName } = req.body as JoinLobbyRequest;
+    const { lobbyId, playerId, playerName } = req.body as JoinLobbyRequest;
 
     if (!lobbyId) {
       return res.status(400).json({
@@ -50,7 +58,21 @@ lobbyRouter.post('/join', (req: Request, res: Response) => {
       });
     }
 
-    const player = lobbyService.joinLobby(lobbyId, playerName);
+    if (!playerId) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'playerId is required',
+      });
+    }
+
+    if (!isValidUUID(playerId)) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'playerId must be a valid UUID',
+      });
+    }
+
+    const player = lobbyService.joinLobby(lobbyId, playerId, playerName);
     const lobbyState = lobbyService.getLobbyState(lobbyId);
 
     if (!lobbyState) {
@@ -77,6 +99,13 @@ lobbyRouter.post('/join', (req: Request, res: Response) => {
       }
 
       if (error.message === 'Lobby is already in game') {
+        return res.status(409).json({
+          error: 'Conflict',
+          message: error.message,
+        });
+      }
+
+      if (error.message === 'Player ID already exists in this lobby') {
         return res.status(409).json({
           error: 'Conflict',
           message: error.message,

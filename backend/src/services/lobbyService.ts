@@ -34,11 +34,12 @@ export class LobbyService {
   /**
    * Join an existing lobby
    * @param lobbyId - The lobby to join
+   * @param playerId - The player ID (provided by client)
    * @param playerName - Optional player name
    * @returns The player that joined
-   * @throws Error if lobby doesn't exist or is in-game
+   * @throws Error if lobby doesn't exist, is in-game, or playerId already exists
    */
-  joinLobby(lobbyId: LobbyId, playerName?: string): Player {
+  joinLobby(lobbyId: LobbyId, playerId: PlayerId, playerName?: string): Player {
     const lobby = this.lobbies.get(lobbyId);
 
     if (!lobby) {
@@ -49,7 +50,11 @@ export class LobbyService {
       throw new Error('Lobby is already in game');
     }
 
-    const playerId = uuidv4();
+    // Check if player ID already exists in this lobby
+    if (lobby.players.has(playerId)) {
+      throw new Error('Player ID already exists in this lobby');
+    }
+
     const isFirstPlayer = lobby.players.size === 0;
 
     const player: Player = {

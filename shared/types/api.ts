@@ -14,6 +14,7 @@ export interface CreateLobbyResponse {
 
 export interface JoinLobbyRequest {
   lobbyId: LobbyId;
+  playerId: PlayerId;
   playerName?: string;
 }
 

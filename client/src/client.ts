@@ -158,7 +158,7 @@ export class GameClient {
     const { playerId, isLeader, lobby } = await this.api.joinLobby(lobbyId, playerName);
     this.state.setLobby(lobbyId, playerId, playerName, isLeader, lobby);
 
-    this.socket.joinLobby(lobbyId, playerName);
+    this.socket.joinLobby(lobbyId, playerId);
 
     this.ui.showLobby(lobby, playerId);
 

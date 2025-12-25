@@ -109,8 +109,8 @@ export class SocketClient {
     this.socket.disconnect();
   }
 
-  joinLobby(lobbyId: LobbyId, playerName?: string): void {
-    this.socket.emit('lobby:join', { lobbyId, playerName });
+  joinLobby(lobbyId: LobbyId, playerId: PlayerId): void {
+    this.socket.emit('lobby:join', { lobbyId, playerId });
   }
 
   leaveLobby(lobbyId: LobbyId, playerId: PlayerId): void {
