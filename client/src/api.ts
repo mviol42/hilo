@@ -107,6 +107,13 @@ export class ApiClient {
     });
   }
 
+  async readyPlayer(lobbyId: LobbyId, playerId: PlayerId): Promise<void> {
+    await this.axios.post('/api/lobby/ready', {
+      lobbyId,
+      playerId,
+    });
+  }
+
   async startGame(lobbyId: LobbyId, playerId: PlayerId): Promise<{ gameState: PlayerView }> {
     const response = await this.axios.post<{ gameState: PlayerView }>('/api/game/start', {
       lobbyId,

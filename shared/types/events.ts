@@ -13,6 +13,11 @@ export interface LobbyJoinEvent {
   playerId: PlayerId;
 }
 
+export interface LobbyPlayerReadiedEvent {
+  player: Player;
+  lobby: LobbyState;
+}
+
 export interface LobbyPlayerJoinedEvent {
   player: Player;
   lobby: LobbyState;
@@ -70,6 +75,7 @@ export interface ErrorEvent {
 // Server-to-Client event map
 export interface ServerToClientEvents {
   'lobby:playerJoined': (data: LobbyPlayerJoinedEvent) => void;
+  'lobby:playerReadied': (data: LobbyPlayerReadiedEvent) => void;
   'lobby:playerLeft': (data: LobbyPlayerLeftEvent) => void;
   'lobby:leaderChanged': (data: LobbyLeaderChangedEvent) => void;
   'lobby:gameStarting': (data: LobbyGameStartingEvent) => void;

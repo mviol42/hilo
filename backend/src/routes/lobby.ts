@@ -11,6 +11,8 @@ import {
   JoinLobbyResponse,
   LeaveLobbyRequest,
   LeaveLobbyResponse,
+  ReadyLobbyRequest,
+  ReadyLobbyResponse,
   ClientToServerEvents,
   ServerToClientEvents,
 } from '@hilo/shared';
@@ -119,6 +121,80 @@ lobbyRouter.post('/join', (req: Request, res: Response) => {
       if (error.message === 'Player ID already exists in this lobby') {
         return res.status(409).json({
           error: 'Conflict',
+          message: error.message,
+        });
+      }
+    }
+
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/lobby/ready
+ * Leave a lobby
+ */
+lobbyRouter.post('/ready', (req: Request, res: Response) => {
+  try {
+    const { lobbyId, playerId } = req.body as ReadyLobbyRequest;
+
+    if (!lobbyId || !playerId) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'lobbyId and playerId are required',
+      });
+    }
+
+    const player = lobbyService.readyPlayer(lobbyId, playerId);
+
+    // Get updated lobby state (may be null if lobby was removed)
+    const lobbyState = lobbyService.getLobbyState(lobbyId);
+
+    const response: ReadyLobbyResponse = {
+      success: true,
+      lobby: lobbyState || undefined,
+    };
+
+    // Emit WebSocket events (async, don't block HTTP response)
+    if (io && lobbyState) {
+      const roomId = lobbyId;
+      const socketIo = io;
+      setImmediate(() => {
+        try {
+          // Notify players in room that someone readied up
+          socketIo.to(roomId).emit('lobby:playerReadied', {
+            player,
+            lobby: lobbyState,
+          });
+        } catch (error) {
+          console.error('Error emitting WebSocket events:', error);
+        }
+      });
+    }
+
+    res.status(200).json(response);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'Lobby not found') {
+        return res.status(404).json({
+          error: 'Not found',
+          message: error.message,
+        });
+      }
+
+      if (error.message === 'Player not found in lobby') {
+        return res.status(404).json({
+          error: 'Not found',
+          message: error.message,
+        });
+      }
+
+      if (error.message === 'Leaders cannot ready - they should start instead') {
+        return res.status(403).json({
+          error: 'Unauthorized',
           message: error.message,
         });
       }

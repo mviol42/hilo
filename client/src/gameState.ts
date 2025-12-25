@@ -13,6 +13,7 @@ export interface ClientState {
   gameState?: PlayerView;
   winnerId?: PlayerId;
   winnerName?: string;
+  isReady?: boolean;
 }
 
 export class GameStateManager {
@@ -52,6 +53,13 @@ export class GameStateManager {
     this.state = {
       ...this.state,
       isLeader,
+    };
+  }
+
+  updateReadiness(isReady: boolean): void {
+    this.state = {
+      ...this.state,
+      isReady,
     };
   }
 

@@ -189,6 +189,7 @@ export function selectFaceUpCards(
     newPlayerState.faceUp.push(card);
   }
 
+  newState.activePlayerId = getNextPlayerId(gameState, gameState.activePlayerId)
   newState.players.set(playerId, newPlayerState);
 
   return newState;

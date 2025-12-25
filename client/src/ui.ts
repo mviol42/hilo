@@ -68,7 +68,8 @@ export class UI {
       const isLeader = player.id === lobby.leaderId;
       const prefix = isLeader ? '👑' : '  ';
       const suffix = isYou ? chalk.cyan(' (you)') : '';
-      console.log(`${prefix} ${player.name}${suffix}`);
+      const isReady = player.isReady ? ' ✅' : ''
+      console.log(`${prefix} ${player.name}${suffix}${isReady}`);
     });
 
     console.log();

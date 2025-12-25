@@ -61,6 +61,8 @@ export class LobbyService {
       id: playerId,
       name: playerName || `Player ${lobby.players.size + 1}`,
       isLeader: isFirstPlayer,
+      // the first player starts ready - they will be the leader
+      isReady: isFirstPlayer,
     };
 
     lobby.players.set(playerId, player);
@@ -131,7 +133,47 @@ export class LobbyService {
       throw new Error('Game already started');
     }
 
+    let readinessCheck = true;
+    lobby.players.forEach(player => {
+      readinessCheck = readinessCheck && player.isReady;
+    });
+
+    if (!readinessCheck) {
+      throw new Error('Players are not ready');
+    }
+
     return true;
+  }
+
+  /**
+   * ready a player in a lobby
+   * @param lobbyId - The lobby ID
+   * @param playerId - The player ID
+   * @throws Error if lobby or player not found
+   */
+  readyPlayer(lobbyId: LobbyId, playerId: PlayerId): Player {
+    const lobby = this.lobbies.get(lobbyId);
+
+    if (!lobby) {
+      throw new Error('Lobby not found');
+    }
+
+    var player = lobby.players.get(playerId);
+    if (!player) {
+      throw new Error('Player not found in lobby');
+    }
+
+    const isLeader = lobby.leaderId === playerId;
+
+    if (isLeader) {
+      throw new Error('Leaders cannot ready - they should start instead')
+    }
+
+    const isReady = true;
+    player.isReady = isReady;
+
+    lobby.players.set(playerId, player);
+    return player;
   }
 
   /**
