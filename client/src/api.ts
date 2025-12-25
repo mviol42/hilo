@@ -2,6 +2,8 @@ import axios, { AxiosInstance } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { LobbyId, LobbyState } from '@hilo/shared/types/lobby';
 import { PlayerId } from '@hilo/shared/types/player';
+import { PlayerView } from '@hilo/shared/types/game';
+import { Card } from '@hilo/shared/types/cards';
 import { logger } from './logger';
 
 export interface CreateLobbyResponse {
@@ -105,9 +107,47 @@ export class ApiClient {
     });
   }
 
-  async startGame(lobbyId: LobbyId, playerId: PlayerId): Promise<{ gameId: string }> {
-    const response = await this.axios.post<{ gameId: string }>('/api/game/start', {
+  async startGame(lobbyId: LobbyId, playerId: PlayerId): Promise<{ gameState: PlayerView }> {
+    const response = await this.axios.post<{ gameState: PlayerView }>('/api/game/start', {
       lobbyId,
+      playerId,
+    });
+    return response.data;
+  }
+
+  async selectFaceUp(
+    gameId: string,
+    playerId: PlayerId,
+    cards: Card[]
+  ): Promise<{ gameState: PlayerView }> {
+    const response = await this.axios.post<{ gameState: PlayerView }>('/api/game/select-faceup', {
+      gameId,
+      playerId,
+      cards,
+    });
+    return response.data;
+  }
+
+  async playCards(
+    gameId: string,
+    playerId: PlayerId,
+    cards: Card[]
+  ): Promise<{ gameState: PlayerView; blowUp: boolean; winner: boolean }> {
+    const response = await this.axios.post<{
+      gameState: PlayerView;
+      blowUp: boolean;
+      winner: boolean;
+    }>('/api/game/play-cards', {
+      gameId,
+      playerId,
+      cards,
+    });
+    return response.data;
+  }
+
+  async pickUpPile(gameId: string, playerId: PlayerId): Promise<{ gameState: PlayerView }> {
+    const response = await this.axios.post<{ gameState: PlayerView }>('/api/game/pickup-pile', {
+      gameId,
       playerId,
     });
     return response.data;

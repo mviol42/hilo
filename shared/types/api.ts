@@ -5,6 +5,7 @@
 import { LobbyId, LobbyState } from './lobby';
 import { PlayerId } from './player';
 import { GameState, PlayerView } from './game';
+import { Card } from './card';
 
 // Lobby endpoints
 
@@ -43,6 +44,39 @@ export interface StartGameRequest {
 export interface StartGameResponse {
   gameState: PlayerView;
   error?: string;
+}
+
+// Game action endpoints
+
+export interface SelectFaceUpRequest {
+  gameId: string;
+  playerId: PlayerId;
+  cards: Card[];
+}
+
+export interface SelectFaceUpResponse {
+  gameState: PlayerView;
+}
+
+export interface PlayCardsRequest {
+  gameId: string;
+  playerId: PlayerId;
+  cards: Card[];
+}
+
+export interface PlayCardsResponse {
+  gameState: PlayerView;
+  blowUp: boolean;
+  winner: boolean;
+}
+
+export interface PickUpPileRequest {
+  gameId: string;
+  playerId: PlayerId;
+}
+
+export interface PickUpPileResponse {
+  gameState: PlayerView;
 }
 
 // Error responses

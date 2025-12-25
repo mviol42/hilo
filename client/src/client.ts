@@ -158,8 +158,6 @@ export class GameClient {
     const { playerId, isLeader, lobby } = await this.api.joinLobby(lobbyId, playerName);
     this.state.setLobby(lobbyId, playerId, playerName, isLeader, lobby);
 
-    this.socket.joinLobby(lobbyId, playerId);
-
     this.ui.showLobby(lobby, playerId);
 
     await this.lobbyLoop();
@@ -177,7 +175,6 @@ export class GameClient {
 
       if (command === 'leave') {
         await this.api.leaveLobby(currentState.lobbyId, currentState.playerId);
-        this.socket.leaveLobby(currentState.lobbyId, currentState.playerId);
         this.state.reset();
         break;
       } else if (command === 'start') {
@@ -258,7 +255,7 @@ export class GameClient {
       }
 
       const selectedCards = indices.map(i => gameState.myHand[i]);
-      this.socket.selectFaceUp(gameId, playerId, selectedCards);
+      await this.api.selectFaceUp(gameId, playerId, selectedCards);
       this.ui.success('Face-up cards selected!');
     } catch (error) {
       if (error instanceof Error) {
@@ -277,7 +274,7 @@ export class GameClient {
     const command = await this.input.question('\nCommand (play/pickup)');
 
     if (command === 'pickup') {
-      this.socket.pickUpPile(gameId, playerId);
+      await this.api.pickUpPile(gameId, playerId);
       this.ui.info('Picking up the pile...');
     } else if (command === 'play') {
       await this.playCardsPhase(gameId, playerId, gameState);
@@ -309,7 +306,7 @@ export class GameClient {
       }
 
       const selectedCards = indices.map(i => availableCards[i]);
-      this.socket.playCards(gameId, playerId, selectedCards);
+      await this.api.playCards(gameId, playerId, selectedCards);
       this.ui.success('Cards played!');
     } catch (error) {
       if (error instanceof Error) {

@@ -2,14 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import {
   ClientToServerEvents,
   ServerToClientEvents,
-  LobbyJoinEvent,
-  GamePlayCardsEvent,
-  GamePickUpPileEvent,
-  GameSelectFaceUpEvent,
 } from '@hilo/shared/types/events';
-import { LobbyId } from '@hilo/shared/types/lobby';
-import { PlayerId } from '@hilo/shared/types/player';
-import { Card } from '@hilo/shared/types/card';
 import { logger } from './logger';
 
 export type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -107,26 +100,6 @@ export class SocketClient {
 
   disconnect(): void {
     this.socket.disconnect();
-  }
-
-  joinLobby(lobbyId: LobbyId, playerId: PlayerId): void {
-    this.socket.emit('lobby:join', { lobbyId, playerId });
-  }
-
-  leaveLobby(lobbyId: LobbyId, playerId: PlayerId): void {
-    this.socket.emit('lobby:leave', { lobbyId, playerId });
-  }
-
-  selectFaceUp(gameId: string, playerId: PlayerId, cards: Card[]): void {
-    this.socket.emit('game:selectFaceUp', { gameId, playerId, cards });
-  }
-
-  playCards(gameId: string, playerId: PlayerId, cards: Card[]): void {
-    this.socket.emit('game:playCards', { gameId, playerId, cards });
-  }
-
-  pickUpPile(gameId: string, playerId: PlayerId): void {
-    this.socket.emit('game:pickUpPile', { gameId, playerId });
   }
 
   on<K extends keyof ServerToClientEvents>(
