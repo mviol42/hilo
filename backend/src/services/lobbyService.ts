@@ -34,11 +34,12 @@ export class LobbyService {
   /**
    * Join an existing lobby
    * @param lobbyId - The lobby to join
+   * @param playerId - The player ID (provided by client)
    * @param playerName - Optional player name
    * @returns The player that joined
-   * @throws Error if lobby doesn't exist or is in-game
+   * @throws Error if lobby doesn't exist, is in-game, or playerId already exists
    */
-  joinLobby(lobbyId: LobbyId, playerName?: string): Player {
+  joinLobby(lobbyId: LobbyId, playerId: PlayerId, playerName?: string): Player {
     const lobby = this.lobbies.get(lobbyId);
 
     if (!lobby) {
@@ -49,13 +50,19 @@ export class LobbyService {
       throw new Error('Lobby is already in game');
     }
 
-    const playerId = uuidv4();
+    // Check if player ID already exists in this lobby
+    if (lobby.players.has(playerId)) {
+      throw new Error('Player ID already exists in this lobby');
+    }
+
     const isFirstPlayer = lobby.players.size === 0;
 
     const player: Player = {
       id: playerId,
       name: playerName || `Player ${lobby.players.size + 1}`,
       isLeader: isFirstPlayer,
+      // the first player starts ready - they will be the leader
+      isReady: isFirstPlayer,
     };
 
     lobby.players.set(playerId, player);
@@ -126,7 +133,47 @@ export class LobbyService {
       throw new Error('Game already started');
     }
 
+    let readinessCheck = true;
+    lobby.players.forEach(player => {
+      readinessCheck = readinessCheck && player.isReady;
+    });
+
+    if (!readinessCheck) {
+      throw new Error('Players are not ready');
+    }
+
     return true;
+  }
+
+  /**
+   * ready a player in a lobby
+   * @param lobbyId - The lobby ID
+   * @param playerId - The player ID
+   * @throws Error if lobby or player not found
+   */
+  readyPlayer(lobbyId: LobbyId, playerId: PlayerId): Player {
+    const lobby = this.lobbies.get(lobbyId);
+
+    if (!lobby) {
+      throw new Error('Lobby not found');
+    }
+
+    var player = lobby.players.get(playerId);
+    if (!player) {
+      throw new Error('Player not found in lobby');
+    }
+
+    const isLeader = lobby.leaderId === playerId;
+
+    if (isLeader) {
+      throw new Error('Leaders cannot ready - they should start instead')
+    }
+
+    const isReady = true;
+    player.isReady = isReady;
+
+    lobby.players.set(playerId, player);
+    return player;
   }
 
   /**

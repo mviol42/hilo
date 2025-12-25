@@ -11,42 +11,44 @@ import {
 import { GameState, PlayerGameState } from '@hilo/shared';
 
 describe('Game Initialization', () => {
+  const testRoomId = 'test-room-1';
+
   describe('initializeGame', () => {
     it('should create game with correct number of players', () => {
       const playerIds = ['player1', 'player2', 'player3'];
-      const game = initializeGame(playerIds);
+      const game = initializeGame(playerIds, testRoomId);
 
       expect(game.players.size).toBe(3);
       expect(game.turnOrder).toEqual(playerIds);
     });
 
     it('should initialize with setup phase', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
 
       expect(game.phase).toBe('setup');
     });
 
     it('should create shuffled deck', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
 
       expect(game.deck.length).toBeGreaterThan(0);
     });
 
     it('should initialize empty pile and discard pile', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
 
       expect(game.pile).toEqual([]);
       expect(game.discardPile).toEqual([]);
     });
 
     it('should set first player as active', () => {
-      const game = initializeGame(['p1', 'p2', 'p3']);
+      const game = initializeGame(['p1', 'p2', 'p3'], testRoomId);
 
       expect(game.activePlayerId).toBe('p1');
     });
 
     it('should initialize each player with empty cards', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
 
       for (const [playerId, state] of game.players) {
         expect(state.hand).toEqual([]);
@@ -55,15 +57,21 @@ describe('Game Initialization', () => {
       }
     });
 
+    it('should generate game ID with room ID prefix', () => {
+      const game = initializeGame(['p1', 'p2'], testRoomId);
+
+      expect(game.id).toMatch(new RegExp(`^${testRoomId}:game:[a-f0-9-]+$`));
+    });
+
     it('should throw error for less than 2 players', () => {
-      expect(() => initializeGame(['p1'])).toThrow('Game requires at least 2 players');
-      expect(() => initializeGame([])).toThrow('Game requires at least 2 players');
+      expect(() => initializeGame(['p1'], testRoomId)).toThrow('Game requires at least 2 players');
+      expect(() => initializeGame([], testRoomId)).toThrow('Game requires at least 2 players');
     });
   });
 
   describe('dealCards', () => {
     it('should deal 9 cards to each player', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
 
       for (const [playerId, state] of dealtGame.players) {
@@ -73,7 +81,7 @@ describe('Game Initialization', () => {
     });
 
     it('should deal 3 face-down cards to each player', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
 
       for (const [playerId, state] of dealtGame.players) {
@@ -82,7 +90,7 @@ describe('Game Initialization', () => {
     });
 
     it('should deal 6 cards to hand', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
 
       for (const [playerId, state] of dealtGame.players) {
@@ -91,7 +99,7 @@ describe('Game Initialization', () => {
     });
 
     it('should reduce deck size after dealing', () => {
-      const game = initializeGame(['p1', 'p2', 'p3']);
+      const game = initializeGame(['p1', 'p2', 'p3'], testRoomId);
       const initialDeckSize = game.deck.length;
       const dealtGame = dealCards(game);
 
@@ -99,7 +107,7 @@ describe('Game Initialization', () => {
     });
 
     it('should not give duplicate cards to players', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
 
       const allDealtCards = [];
@@ -114,7 +122,7 @@ describe('Game Initialization', () => {
 
   describe('selectFaceUpCards', () => {
     it('should move 3 cards from hand to face-up', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
       const selected = selectFaceUpCards(dealtGame, 'p1', [0, 1, 2]);
 
@@ -124,7 +132,7 @@ describe('Game Initialization', () => {
     });
 
     it('should throw error if not exactly 3 cards selected', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
 
       expect(() => selectFaceUpCards(dealtGame, 'p1', [0, 1])).toThrow('Must select exactly 3 face-up cards');
@@ -132,14 +140,14 @@ describe('Game Initialization', () => {
     });
 
     it('should throw error for duplicate indices', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
 
       expect(() => selectFaceUpCards(dealtGame, 'p1', [0, 0, 1])).toThrow('Card indices must be unique');
     });
 
     it('should throw error for out of range indices', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
 
       expect(() => selectFaceUpCards(dealtGame, 'p1', [0, 1, 6])).toThrow('Card index out of range');
@@ -147,14 +155,14 @@ describe('Game Initialization', () => {
     });
 
     it('should throw error if player not found', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
 
       expect(() => selectFaceUpCards(dealtGame, 'p999', [0, 1, 2])).toThrow('Player not found');
     });
 
     it('should throw error if player does not have 6 cards in hand', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
 
       expect(() => selectFaceUpCards(game, 'p1', [0, 1, 2])).toThrow('Player must have 6 cards in hand');
     });
@@ -240,7 +248,7 @@ describe('Game Initialization', () => {
 
   describe('determineFirstPlayer', () => {
     it('should select player with lowest non-special rank', () => {
-      const game = initializeGame(['p1', 'p2', 'p3']);
+      const game = initializeGame(['p1', 'p2', 'p3'], testRoomId);
 
       game.players.set('p1', {
         hand: [{ rank: '7', suit: 'hearts' }],
@@ -263,7 +271,7 @@ describe('Game Initialization', () => {
     });
 
     it('should randomly select from tied players', () => {
-      const game = initializeGame(['p1', 'p2', 'p3']);
+      const game = initializeGame(['p1', 'p2', 'p3'], testRoomId);
 
       game.players.set('p1', {
         hand: [{ rank: '5', suit: 'hearts' }],
@@ -291,7 +299,7 @@ describe('Game Initialization', () => {
     });
 
     it('should return first player if all have only special cards', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
 
       game.players.set('p1', {
         hand: [{ rank: '2', suit: 'hearts' }],
@@ -311,7 +319,7 @@ describe('Game Initialization', () => {
 
   describe('startGame', () => {
     it('should transition from setup to playing phase', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
       const p1Selected = selectFaceUpCards(dealtGame, 'p1', [0, 1, 2]);
       const p2Selected = selectFaceUpCards(p1Selected, 'p2', [0, 1, 2]);
@@ -321,7 +329,7 @@ describe('Game Initialization', () => {
     });
 
     it('should set active player to first player', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
 
       game.players.set('p1', {
@@ -340,7 +348,7 @@ describe('Game Initialization', () => {
     });
 
     it('should throw error if game already started', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
       const p1Selected = selectFaceUpCards(dealtGame, 'p1', [0, 1, 2]);
       const p2Selected = selectFaceUpCards(p1Selected, 'p2', [0, 1, 2]);
@@ -350,7 +358,7 @@ describe('Game Initialization', () => {
     });
 
     it('should throw error if players have not selected face-up cards', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const dealtGame = dealCards(game);
 
       expect(() => startGame(dealtGame)).toThrow('has not selected face-up cards');

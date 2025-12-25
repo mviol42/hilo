@@ -33,6 +33,15 @@ export class GameClient {
       }
     });
 
+    this.socket.on('lobby:playerReadied', (data) => {
+      this.state.updateReadiness(data.player.isReady);
+      const currentState = this.state.getState();
+      if (currentState.phase === 'lobby' && currentState.playerId) {
+        this.ui.showLobby(data.lobby, currentState.playerId);
+        this.ui.success(`${data.player.name} is ready`);
+      }
+    });
+
     this.socket.on('lobby:playerLeft', (data) => {
       this.state.updateLobby(data.lobby);
       const currentState = this.state.getState();
@@ -158,7 +167,8 @@ export class GameClient {
     const { playerId, isLeader, lobby } = await this.api.joinLobby(lobbyId, playerName);
     this.state.setLobby(lobbyId, playerId, playerName, isLeader, lobby);
 
-    this.socket.joinLobby(lobbyId, playerName);
+    // Subscribe to lobby events via WebSocket
+    this.socket.emit('lobby:join', { lobbyId, playerId });
 
     this.ui.showLobby(lobby, playerId);
 
@@ -166,21 +176,48 @@ export class GameClient {
   }
 
   private async lobbyLoop(): Promise<void> {
-    const currentState = this.state.getState();
+    let currentState = this.state.getState();
 
     if (!currentState.lobbyId || !currentState.playerId) {
       throw new Error('Invalid state: not in a lobby');
     }
 
     while (currentState.phase === 'lobby') {
-      const command = await this.input.question('\nCommand (start/leave)');
-
+      const question = currentState.isLeader ?'\nCommand (start/leave)' : '\nCommand (ready/leave)';
+      const command = await this.input.question(question);
+      
+      if (!currentState.lobbyId || !currentState.playerId) {
+        throw new Error('Invalid state: not in a lobby');
+      }
       if (command === 'leave') {
         await this.api.leaveLobby(currentState.lobbyId, currentState.playerId);
-        this.socket.leaveLobby(currentState.lobbyId, currentState.playerId);
+        // Unsubscribe from lobby events via WebSocket
+        this.socket.emit('lobby:leave', { lobbyId: currentState.lobbyId, playerId: currentState.playerId });
         this.state.reset();
         break;
+      } else if (command == 'ready') {
+        if (currentState.isLeader) {
+          this.ui.warning('The leader should start once all other players are ready');
+          continue;
+        }
+        
+        try {
+          await this.api.readyPlayer(currentState.lobbyId, currentState.playerId);
+
+          await this.readyLoop();
+          break;
+        } catch (error) {
+          if (error instanceof Error) {
+            this.ui.error(`Failed to ready: ${error.message}`);
+          }
+        }
+        
       } else if (command === 'start') {
+        currentState = this.state.getState();
+        if (!currentState.lobbyId || !currentState.playerId) {
+          throw new Error('Invalid state: not in a lobby');
+        }
+
         if (!currentState.isLeader) {
           this.ui.warning('Only the leader can start the game');
           continue;
@@ -192,8 +229,12 @@ export class GameClient {
         }
 
         try {
-          await this.api.startGame(currentState.lobbyId, currentState.playerId);
+          const { gameState } = await this.api.startGame(currentState.lobbyId, currentState.playerId);
           this.ui.success('Starting game...');
+
+          // Initialize game state from HTTP response
+          this.state.startGame(gameState.id);
+          this.state.updateGameState(gameState);
 
           await this.gameLoop();
           break;
@@ -206,14 +247,33 @@ export class GameClient {
     }
   }
 
+  private async readyLoop(): Promise<void> {
+    let currentState = this.state.getState();
+
+    this.ui.info('Waiting for the game to start...');
+
+    while(currentState.phase === 'lobby')
+    {
+      currentState = this.state.getState();
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    await this.gameLoop()
+  }
+    
   private async gameLoop(): Promise<void> {
-    const currentState = this.state.getState();
+    let currentState = this.state.getState();
 
     if (!currentState.gameId || !currentState.playerId) {
       throw new Error('Invalid state: not in a game');
     }
 
     while (currentState.phase === 'game' || currentState.phase === 'ended') {
+      currentState = this.state.getState();
+
+      if (!currentState.gameId || !currentState.playerId) {
+        throw new Error('Invalid state: not in a game');
+      }
       if (currentState.phase === 'ended') {
         await this.input.question('\nPress Enter to return to menu');
         this.state.reset();
@@ -236,7 +296,7 @@ export class GameClient {
   }
 
   private async setupPhase(gameId: string, playerId: string, gameState: any): Promise<void> {
-    if (gameState.myFaceUp.length === 3) {
+    if (gameState.activePlayerId !== playerId) {
       this.ui.info('Waiting for other players to select their face-up cards...');
       await new Promise(resolve => setTimeout(resolve, 1000));
       return;
@@ -258,7 +318,7 @@ export class GameClient {
       }
 
       const selectedCards = indices.map(i => gameState.myHand[i]);
-      this.socket.selectFaceUp(gameId, playerId, selectedCards);
+      await this.api.selectFaceUp(gameId, playerId, selectedCards);
       this.ui.success('Face-up cards selected!');
     } catch (error) {
       if (error instanceof Error) {
@@ -277,7 +337,7 @@ export class GameClient {
     const command = await this.input.question('\nCommand (play/pickup)');
 
     if (command === 'pickup') {
-      this.socket.pickUpPile(gameId, playerId);
+      await this.api.pickUpPile(gameId, playerId);
       this.ui.info('Picking up the pile...');
     } else if (command === 'play') {
       await this.playCardsPhase(gameId, playerId, gameState);
@@ -309,7 +369,7 @@ export class GameClient {
       }
 
       const selectedCards = indices.map(i => availableCards[i]);
-      this.socket.playCards(gameId, playerId, selectedCards);
+      await this.api.playCards(gameId, playerId, selectedCards);
       this.ui.success('Cards played!');
     } catch (error) {
       if (error instanceof Error) {

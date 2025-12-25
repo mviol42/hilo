@@ -34,7 +34,7 @@ export async function createServer() {
   });
 
   // API routes
-  const { lobbyRouter } = await import('./routes/lobby');
+  const { lobbyRouter, setLobbySocketIO } = await import('./routes/lobby');
   const { gameRouter, setSocketIO } = await import('./routes/game');
   const { lobbyService } = await import('./services/lobbyService');
   const { redisService } = await import('./services/redisService');
@@ -42,7 +42,8 @@ export async function createServer() {
   // Initialize Redis
   await redisService.connect();
 
-  // Pass Socket.IO instance to game router
+  // Pass Socket.IO instance to routers
+  setLobbySocketIO(io);
   setSocketIO(io);
 
   app.use('/api/lobby', lobbyRouter);

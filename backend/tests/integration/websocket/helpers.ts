@@ -92,11 +92,11 @@ export function waitForEvent<K extends keyof ServerToClientEvents>(
 export async function joinLobby(
   socket: TestSocket,
   lobbyId: string,
-  playerName?: string
+  playerId: string
 ): Promise<void> {
   const joinData: LobbyJoinEvent = {
     lobbyId,
-    playerName,
+    playerId,
   };
 
   socket.emit('lobby:join', joinData);

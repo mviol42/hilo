@@ -1,5 +1,8 @@
 /**
  * Socket.IO event handlers for lobby management
+ *
+ * NOTE: WebSockets are READ-ONLY. All mutations are handled via HTTP API.
+ * See /docs/backend-design.md for the architectural rule.
  */
 
 import { Server, Socket } from 'socket.io';
@@ -31,28 +34,38 @@ export function registerLobbyHandlers(io: TypedServer, socket: TypedSocket): voi
 }
 
 /**
- * Handle player joining a lobby
- * The lobbyId serves as the permanent room ID for Socket.IO
+ * Handle player joining a lobby room via WebSocket
+ * NOTE: This does NOT mutate lobby state. Players must join via HTTP API first.
+ * This handler only subscribes the socket to room events.
  */
 function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
   return async (data: LobbyJoinEvent) => {
     try {
-      const { lobbyId, playerName } = data;
+      const { lobbyId, playerId } = data;
       const roomId = lobbyId; // lobbyId serves as the permanent room ID
 
-      // Join the lobby
-      const player = lobbyService.joinLobby(lobbyId, playerName);
+      // Get the lobby
+      const lobby = lobbyService.getLobby(lobbyId);
+      if (!lobby) {
+        throw new Error('Lobby not found');
+      }
 
-      // Update socket ID for reconnection
-      lobbyService.updateSocketId(lobbyId, player.id, socket.id);
+      // Verify player exists in lobby (must have joined via HTTP API first)
+      const player = lobby.players.get(playerId);
+      if (!player) {
+        throw new Error('Player not found in lobby');
+      }
+
+      // Update socket ID for the existing player
+      lobbyService.updateSocketId(lobbyId, playerId, socket.id);
 
       // Store in socket data
-      (socket.data as SocketData).playerId = player.id;
+      (socket.data as SocketData).playerId = playerId;
       (socket.data as SocketData).lobbyId = lobbyId;
 
       // Save session to Redis
       redisService.setPlayerSession({
-        playerId: player.id,
+        playerId,
         lobbyId,
         socketId: socket.id,
         lastActive: new Date(),
@@ -69,7 +82,7 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
         throw new Error('Lobby not found after join');
       }
 
-      // Notify all players in the room
+      // Notify all players in the room (including this socket)
       io.to(roomId).emit('lobby:playerJoined', {
         player,
         lobby: lobbyState,
@@ -82,25 +95,15 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
 }
 
 /**
- * Handle player leaving a lobby
+ * Handle player leaving a lobby room via WebSocket
+ * NOTE: This does NOT mutate lobby state. Players must leave via HTTP API.
+ * This handler only unsubscribes the socket from room events.
  */
-function handleLobbyLeave(io: TypedServer, socket: TypedSocket) {
+function handleLobbyLeave(_io: TypedServer, socket: TypedSocket) {
   return async (data: { lobbyId: LobbyId; playerId: PlayerId }) => {
     try {
       const { lobbyId, playerId } = data;
       const roomId = lobbyId; // lobbyId serves as the permanent room ID
-
-      // Get lobby state before leaving
-      const lobbyBefore = lobbyService.getLobby(lobbyId);
-      if (!lobbyBefore) {
-        throw new Error('Lobby not found');
-      }
-
-      const wasLeader = lobbyBefore.leaderId === playerId;
-      const oldLeaderId = lobbyBefore.leaderId;
-
-      // Leave the lobby (this may reassign leader or delete lobby)
-      lobbyService.leaveLobby(lobbyId, playerId);
 
       // Leave Socket.IO room
       await socket.leave(roomId);
@@ -113,31 +116,13 @@ function handleLobbyLeave(io: TypedServer, socket: TypedSocket) {
       redisService.clearPlayerSession(playerId).catch((err) => {
         console.error('[LobbyHandlers] Failed to clear session:', err);
       });
-
-      // Get updated lobby state (may be null if lobby deleted)
-      const lobbyAfter = lobbyService.getLobbyState(lobbyId);
-
-      if (lobbyAfter) {
-        // Notify remaining players in room that someone left
-        io.to(roomId).emit('lobby:playerLeft', {
-          playerId,
-          lobby: lobbyAfter,
-        });
-
-        // If leader changed, notify players
-        if (wasLeader && lobbyAfter.leaderId !== oldLeaderId) {
-          io.to(roomId).emit('lobby:leaderChanged', {
-            newLeaderId: lobbyAfter.leaderId,
-            lobby: lobbyAfter,
-          });
-        }
-      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to leave lobby';
       socket.emit('error', { message: errorMessage } as any);
     }
   };
 }
+
 
 /**
  * Handle socket disconnection

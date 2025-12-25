@@ -2,14 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import {
   ClientToServerEvents,
   ServerToClientEvents,
-  LobbyJoinEvent,
-  GamePlayCardsEvent,
-  GamePickUpPileEvent,
-  GameSelectFaceUpEvent,
 } from '@hilo/shared/types/events';
-import { LobbyId } from '@hilo/shared/types/lobby';
-import { PlayerId } from '@hilo/shared/types/player';
-import { Card } from '@hilo/shared/types/card';
 import { logger } from './logger';
 
 export type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -109,26 +102,6 @@ export class SocketClient {
     this.socket.disconnect();
   }
 
-  joinLobby(lobbyId: LobbyId, playerName?: string): void {
-    this.socket.emit('lobby:join', { lobbyId, playerName });
-  }
-
-  leaveLobby(lobbyId: LobbyId, playerId: PlayerId): void {
-    this.socket.emit('lobby:leave', { lobbyId, playerId });
-  }
-
-  selectFaceUp(gameId: string, playerId: PlayerId, cards: Card[]): void {
-    this.socket.emit('game:selectFaceUp', { gameId, playerId, cards });
-  }
-
-  playCards(gameId: string, playerId: PlayerId, cards: Card[]): void {
-    this.socket.emit('game:playCards', { gameId, playerId, cards });
-  }
-
-  pickUpPile(gameId: string, playerId: PlayerId): void {
-    this.socket.emit('game:pickUpPile', { gameId, playerId });
-  }
-
   on<K extends keyof ServerToClientEvents>(
     event: K,
     listener: ServerToClientEvents[K]
@@ -152,5 +125,17 @@ export class SocketClient {
     listener: ServerToClientEvents[K]
   ): void {
     this.socket.once(event, listener as any);
+  }
+
+  /**
+   * Emit an event to the server
+   * NOTE: Only for subscribing to rooms, not for mutations.
+   * All mutations must go through the HTTP API.
+   */
+  emit<K extends keyof ClientToServerEvents>(
+    event: K,
+    data: Parameters<ClientToServerEvents[K]>[0]
+  ): void {
+    (this.socket.emit as any)(event, data);
   }
 }

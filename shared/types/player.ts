@@ -8,6 +8,7 @@ export interface Player {
   id: PlayerId;
   name: string;
   isLeader: boolean;
+  isReady: boolean;
   socketId?: string;
 }
 

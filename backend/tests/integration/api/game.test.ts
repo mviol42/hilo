@@ -6,6 +6,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { Express } from 'express';
 import { Server } from 'http';
+import { v4 as uuidv4 } from 'uuid';
 import { createTestServer, closeTestServer, TestServer } from '../setup';
 import { lobbyService } from '../../../src/services/lobbyService';
 import { StartGameResponse } from '@hilo/shared';
@@ -38,11 +39,13 @@ describe('Game API', () => {
         .expect(201);
 
       const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
 
       // Join as leader
       const joinResponse1 = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Alice' })
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
         .expect(200);
 
       const leaderId = joinResponse1.body.playerId;
@@ -50,7 +53,7 @@ describe('Game API', () => {
       // Join as second player
       await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Bob' })
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
         .expect(200);
 
       // Start game
@@ -64,7 +67,8 @@ describe('Game API', () => {
 
       expect(body.gameState).toBeDefined();
       expect(body.gameState.id).toBeDefined();
-      expect(body.gameState.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      // Game ID format is lobbyId:game:uuid
+      expect(body.gameState.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}:game:[0-9a-f-]+$/i);
       expect(body.gameState.phase).toBe('setup');
       expect(body.gameState.activePlayerId).toBeDefined();
     });
@@ -76,17 +80,19 @@ describe('Game API', () => {
         .expect(201);
 
       const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
 
       const joinResponse1 = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Alice' })
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
         .expect(200);
 
       const leaderId = joinResponse1.body.playerId;
 
       await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Bob' })
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
         .expect(200);
 
       // Start game
@@ -137,17 +143,19 @@ describe('Game API', () => {
         .expect(201);
 
       const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
 
       // First player (leader)
       await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Alice' })
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
         .expect(200);
 
       // Second player (not leader)
       const joinResponse2 = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Bob' })
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
         .expect(200);
 
       const nonLeaderId = joinResponse2.body.playerId;
@@ -169,11 +177,12 @@ describe('Game API', () => {
         .expect(201);
 
       const lobbyId = createResponse.body.lobbyId;
+      const playerId = uuidv4();
 
       // Join as only player
       const joinResponse = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Alice' })
+        .send({ lobbyId, playerId, playerName: 'Alice' })
         .expect(200);
 
       const leaderId = joinResponse.body.playerId;
@@ -195,17 +204,19 @@ describe('Game API', () => {
         .expect(201);
 
       const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
 
       const joinResponse1 = await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Alice' })
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
         .expect(200);
 
       const leaderId = joinResponse1.body.playerId;
 
       await request(app)
         .post('/api/lobby/join')
-        .send({ lobbyId, playerName: 'Bob' })
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
         .expect(200);
 
       // Start game once

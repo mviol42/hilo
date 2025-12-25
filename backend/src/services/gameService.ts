@@ -31,7 +31,7 @@ export class GameService {
    * @returns The initialized game state
    */
   createGame(roomId: LobbyId, playerIds: PlayerId[]): GameState {
-    const gameState = initializeGame(playerIds);
+    const gameState = initializeGame(playerIds, roomId);
     const dealtState = dealCards(gameState);
 
     this.games.set(dealtState.id, dealtState);

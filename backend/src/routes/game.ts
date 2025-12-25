@@ -6,7 +6,19 @@ import { Router, Request, Response } from 'express';
 import { Server as SocketIOServer } from 'socket.io';
 import { lobbyService } from '../services/lobbyService';
 import { gameService } from '../services/gameService';
-import { StartGameRequest, StartGameResponse } from '@hilo/shared';
+import { redisService } from '../services/redisService';
+import {
+  StartGameRequest,
+  StartGameResponse,
+  SelectFaceUpRequest,
+  SelectFaceUpResponse,
+  PlayCardsRequest,
+  PlayCardsResponse,
+  PickUpPileRequest,
+  PickUpPileResponse,
+  PlayerId,
+  GameLogEntry,
+} from '@hilo/shared';
 import { ClientToServerEvents, ServerToClientEvents } from '@hilo/shared';
 
 type TypedServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
@@ -137,3 +149,303 @@ gameRouter.post('/start', (req: Request, res: Response) => {
     });
   }
 });
+
+/**
+ * POST /api/game/select-faceup
+ * Player selects 3 face-up cards during setup phase
+ */
+gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
+  try {
+    const { gameId, playerId, cards } = req.body as SelectFaceUpRequest;
+
+    if (!gameId || !playerId || !cards || !Array.isArray(cards)) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'gameId, playerId, and cards array are required',
+      });
+    }
+
+    if (cards.length !== 3) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'Must select exactly 3 cards',
+      });
+    }
+
+    // Get game state
+    const game = gameService.getGame(gameId);
+    if (!game) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Game not found',
+      });
+    }
+
+    const playerState = game.players.get(playerId);
+    if (!playerState) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Player not found in game',
+      });
+    }
+
+    // Find indices of the selected cards
+    const cardIndices: number[] = [];
+    for (const selectedCard of cards) {
+      const index = playerState.hand.findIndex(
+        (c) => c.rank === selectedCard.rank && c.suit === selectedCard.suit
+      );
+      if (index === -1) {
+        return res.status(400).json({
+          error: 'Bad request',
+          message: 'Card not in hand',
+        });
+      }
+      cardIndices.push(index);
+    }
+
+    // Select face-up cards
+    const updatedGame = gameService.selectFaceUp(gameId, playerId, cardIndices);
+
+    // Log action to Redis
+    const logEntry: GameLogEntry = {
+      timestamp: new Date(),
+      playerId,
+      action: 'select_faceup',
+      cards,
+      description: `Player ${playerId.substring(0, 8)} selected face-up cards`,
+    };
+    redisService.logGameAction(gameId, logEntry).catch((err) => {
+      console.error('[GameRoutes] Failed to log action:', err);
+    });
+
+    // Broadcast state update to all players via WebSocket
+    if (io) {
+      await broadcastGameState(io, gameId, updatedGame.turnOrder);
+
+      // Check if all players have selected
+      if (gameService.allPlayersReady(gameId)) {
+        // Start the game
+        const startedGame = gameService.startGamePlay(gameId);
+
+        // Broadcast updated state with first active player
+        await broadcastGameState(io, gameId, startedGame.turnOrder);
+
+        // Emit turn change event to room
+        const roomId = gameService.getRoomIdFromGame(gameId);
+        if (roomId) {
+          io.to(roomId).emit('game:turnChange', {
+            activePlayerId: startedGame.activePlayerId,
+          });
+        }
+      }
+    }
+
+    // Return player's view
+    const playerView = gameService.getPlayerView(gameId, playerId);
+    if (!playerView) {
+      throw new Error('Failed to get player view');
+    }
+
+    const response: SelectFaceUpResponse = {
+      gameState: playerView,
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error selecting face-up cards:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/game/play-cards
+ * Player plays cards from hand/face-up/face-down
+ */
+gameRouter.post('/play-cards', async (req: Request, res: Response) => {
+  try {
+    const { gameId, playerId, cards } = req.body as PlayCardsRequest;
+
+    if (!gameId || !playerId || !cards || !Array.isArray(cards)) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'gameId, playerId, and cards array are required',
+      });
+    }
+
+    // Play the cards
+    const { gameState, blowUp, winner } = gameService.playCardsAction(gameId, playerId, cards);
+
+    // Log action to Redis
+    const action: 'play_cards' | 'blow_up' = blowUp ? 'blow_up' : 'play_cards';
+    const description = blowUp
+      ? `Player ${playerId.substring(0, 8)} played ${cards.length} card(s) and blew up the pile`
+      : `Player ${playerId.substring(0, 8)} played ${cards.length} card(s)`;
+
+    const logEntry: GameLogEntry = {
+      timestamp: new Date(),
+      playerId,
+      action,
+      cards,
+      description,
+    };
+    redisService.logGameAction(gameId, logEntry).catch((err) => {
+      console.error('[GameRoutes] Failed to log action:', err);
+    });
+
+    // Broadcast via WebSocket
+    if (io) {
+      const roomId = gameService.getRoomIdFromGame(gameId);
+      if (roomId) {
+        // If blow-up occurred, notify all players in room
+        if (blowUp) {
+          const reason = cards[0].rank === '10' ? 'ten' : 'four_of_kind';
+          io.to(roomId).emit('game:pileBlown', {
+            playerId,
+            reason,
+          });
+        }
+
+        // Broadcast state update to all players
+        await broadcastGameState(io, gameId, gameState.turnOrder);
+
+        // Emit turn change event to room
+        io.to(roomId).emit('game:turnChange', {
+          activePlayerId: gameState.activePlayerId,
+        });
+
+        // If player won, emit winner event to room
+        if (winner && gameState.winner) {
+          // Get player name from game state
+          const player = gameState.players.get(gameState.winner);
+          const winnerName = player ? `Player ${gameState.winner.substring(0, 8)}` : 'Unknown';
+
+          io.to(roomId).emit('game:playerWon', {
+            winnerId: gameState.winner,
+            winnerName,
+          });
+        }
+      }
+    }
+
+    // Return player's view
+    const playerView = gameService.getPlayerView(gameId, playerId);
+    if (!playerView) {
+      throw new Error('Failed to get player view');
+    }
+
+    const response: PlayCardsResponse = {
+      gameState: playerView,
+      blowUp,
+      winner,
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error playing cards:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/game/pickup-pile
+ * Player picks up the pile
+ */
+gameRouter.post('/pickup-pile', async (req: Request, res: Response) => {
+  try {
+    const { gameId, playerId } = req.body as PickUpPileRequest;
+
+    if (!gameId || !playerId) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'gameId and playerId are required',
+      });
+    }
+
+    // Pick up the pile
+    const updatedGame = gameService.pickUpPileAction(gameId, playerId);
+
+    // Log action to Redis
+    const logEntry: GameLogEntry = {
+      timestamp: new Date(),
+      playerId,
+      action: 'pickup_pile',
+      description: `Player ${playerId.substring(0, 8)} picked up the pile`,
+    };
+    redisService.logGameAction(gameId, logEntry).catch((err) => {
+      console.error('[GameRoutes] Failed to log action:', err);
+    });
+
+    // Broadcast via WebSocket
+    if (io) {
+      const roomId = gameService.getRoomIdFromGame(gameId);
+      if (roomId) {
+        // Broadcast state update to all players
+        await broadcastGameState(io, gameId, updatedGame.turnOrder);
+
+        // Emit turn change event to room
+        io.to(roomId).emit('game:turnChange', {
+          activePlayerId: updatedGame.activePlayerId,
+        });
+      }
+    }
+
+    // Return player's view
+    const playerView = gameService.getPlayerView(gameId, playerId);
+    if (!playerView) {
+      throw new Error('Failed to get player view');
+    }
+
+    const response: PickUpPileResponse = {
+      gameState: playerView,
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error picking up pile:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * Helper: Broadcast personalized game state to all players in the room
+ */
+async function broadcastGameState(
+  io: TypedServer,
+  gameId: string,
+  playerIds: PlayerId[]
+): Promise<void> {
+  // Get the room ID for this game
+  const roomId = gameService.getRoomIdFromGame(gameId);
+  if (!roomId) {
+    return;
+  }
+
+  // Get all sockets in the room
+  const sockets = await io.in(roomId).fetchSockets();
+
+  for (const playerId of playerIds) {
+    const playerView = gameService.getPlayerView(gameId, playerId);
+    if (playerView) {
+      // Find the socket for this player
+      for (const socket of sockets) {
+        const socketData = socket.data as any;
+        if (socketData.playerId === playerId) {
+          socket.emit('game:stateUpdate', {
+            gameState: playerView,
+          });
+          break;
+        }
+      }
+    }
+  }
+}

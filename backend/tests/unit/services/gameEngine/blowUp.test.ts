@@ -8,6 +8,8 @@ import {
 import { Card, PlayerGameState } from '@hilo/shared';
 
 describe('Blow Up Mechanics', () => {
+  const testRoomId = 'test-room-1';
+
   describe('checkBlowUp', () => {
     it('should return true when top card is 10', () => {
       const pile: Card[] = [
@@ -80,7 +82,7 @@ describe('Blow Up Mechanics', () => {
 
   describe('playCards - Blow Up with 10', () => {
     it('should blow up pile when playing 10', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: '5', suit: 'clubs' }];
@@ -100,7 +102,7 @@ describe('Blow Up Mechanics', () => {
     });
 
     it('should give player another turn after blowing up', () => {
-      const game = initializeGame(['p1', 'p2', 'p3']);
+      const game = initializeGame(['p1', 'p2', 'p3'], testRoomId);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -119,7 +121,7 @@ describe('Blow Up Mechanics', () => {
 
   describe('playCards - Blow Up with Four of a Kind', () => {
     it('should blow up when completing four of same rank', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [
@@ -143,7 +145,7 @@ describe('Blow Up Mechanics', () => {
     });
 
     it('should blow up when playing multiple cards to complete four', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [
@@ -171,7 +173,7 @@ describe('Blow Up Mechanics', () => {
     });
 
     it('should not blow up with only 3 of same rank', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [
@@ -243,7 +245,7 @@ describe('Blow Up Mechanics', () => {
 
   describe('Win Condition', () => {
     it('should set winner when player runs out of cards', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -261,7 +263,7 @@ describe('Blow Up Mechanics', () => {
     });
 
     it('should not set winner if player still has face-up cards', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -279,7 +281,7 @@ describe('Blow Up Mechanics', () => {
     });
 
     it('should not set winner if player still has face-down cards', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -297,7 +299,7 @@ describe('Blow Up Mechanics', () => {
     });
 
     it('should win when playing last face-down card', () => {
-      const game = initializeGame(['p1', 'p2']);
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];

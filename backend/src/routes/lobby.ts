@@ -3,6 +3,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { Server as SocketIOServer } from 'socket.io';
 import { lobbyService } from '../services/lobbyService';
 import {
   CreateLobbyResponse,
@@ -10,9 +11,29 @@ import {
   JoinLobbyResponse,
   LeaveLobbyRequest,
   LeaveLobbyResponse,
+  ReadyLobbyRequest,
+  ReadyLobbyResponse,
+  ClientToServerEvents,
+  ServerToClientEvents,
 } from '@hilo/shared';
 
+type TypedServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
+
+let io: TypedServer | null = null;
+
+export function setLobbySocketIO(ioInstance: TypedServer): void {
+  io = ioInstance;
+}
+
 export const lobbyRouter = Router();
+
+/**
+ * Validate UUID format (v4)
+ */
+function isValidUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
 
 /**
  * POST /api/lobby/create
@@ -41,7 +62,7 @@ lobbyRouter.post('/create', (req: Request, res: Response) => {
  */
 lobbyRouter.post('/join', (req: Request, res: Response) => {
   try {
-    const { lobbyId, playerName } = req.body as JoinLobbyRequest;
+    const { lobbyId, playerId, playerName } = req.body as JoinLobbyRequest;
 
     if (!lobbyId) {
       return res.status(400).json({
@@ -50,7 +71,21 @@ lobbyRouter.post('/join', (req: Request, res: Response) => {
       });
     }
 
-    const player = lobbyService.joinLobby(lobbyId, playerName);
+    if (!playerId) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'playerId is required',
+      });
+    }
+
+    if (!isValidUUID(playerId)) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'playerId must be a valid UUID',
+      });
+    }
+
+    const player = lobbyService.joinLobby(lobbyId, playerId, playerName);
     const lobbyState = lobbyService.getLobbyState(lobbyId);
 
     if (!lobbyState) {
@@ -82,6 +117,87 @@ lobbyRouter.post('/join', (req: Request, res: Response) => {
           message: error.message,
         });
       }
+
+      if (error.message === 'Player ID already exists in this lobby') {
+        return res.status(409).json({
+          error: 'Conflict',
+          message: error.message,
+        });
+      }
+    }
+
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/lobby/ready
+ * Leave a lobby
+ */
+lobbyRouter.post('/ready', (req: Request, res: Response) => {
+  try {
+    const { lobbyId, playerId } = req.body as ReadyLobbyRequest;
+
+    if (!lobbyId || !playerId) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'lobbyId and playerId are required',
+      });
+    }
+
+    const player = lobbyService.readyPlayer(lobbyId, playerId);
+
+    // Get updated lobby state (may be null if lobby was removed)
+    const lobbyState = lobbyService.getLobbyState(lobbyId);
+
+    const response: ReadyLobbyResponse = {
+      success: true,
+      lobby: lobbyState || undefined,
+    };
+
+    // Emit WebSocket events (async, don't block HTTP response)
+    if (io && lobbyState) {
+      const roomId = lobbyId;
+      const socketIo = io;
+      setImmediate(() => {
+        try {
+          // Notify players in room that someone readied up
+          socketIo.to(roomId).emit('lobby:playerReadied', {
+            player,
+            lobby: lobbyState,
+          });
+        } catch (error) {
+          console.error('Error emitting WebSocket events:', error);
+        }
+      });
+    }
+
+    res.status(200).json(response);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'Lobby not found') {
+        return res.status(404).json({
+          error: 'Not found',
+          message: error.message,
+        });
+      }
+
+      if (error.message === 'Player not found in lobby') {
+        return res.status(404).json({
+          error: 'Not found',
+          message: error.message,
+        });
+      }
+
+      if (error.message === 'Leaders cannot ready - they should start instead') {
+        return res.status(403).json({
+          error: 'Unauthorized',
+          message: error.message,
+        });
+      }
     }
 
     res.status(500).json({
@@ -106,6 +222,11 @@ lobbyRouter.post('/leave', (req: Request, res: Response) => {
       });
     }
 
+    // Get lobby state before leaving to check leader status
+    const lobbyBefore = lobbyService.getLobby(lobbyId);
+    const wasLeader = lobbyBefore ? lobbyBefore.leaderId === playerId : false;
+    const oldLeaderId = lobbyBefore?.leaderId;
+
     lobbyService.leaveLobby(lobbyId, playerId);
 
     // Get updated lobby state (may be null if lobby was removed)
@@ -115,6 +236,31 @@ lobbyRouter.post('/leave', (req: Request, res: Response) => {
       success: true,
       lobby: lobbyState || undefined,
     };
+
+    // Emit WebSocket events (async, don't block HTTP response)
+    if (io && lobbyState) {
+      const roomId = lobbyId;
+      const socketIo = io;
+      setImmediate(() => {
+        try {
+          // Notify players in room that someone left
+          socketIo.to(roomId).emit('lobby:playerLeft', {
+            playerId,
+            lobby: lobbyState,
+          });
+
+          // If leader changed, notify players
+          if (wasLeader && lobbyState.leaderId !== oldLeaderId) {
+            socketIo.to(roomId).emit('lobby:leaderChanged', {
+              newLeaderId: lobbyState.leaderId,
+              lobby: lobbyState,
+            });
+          }
+        } catch (error) {
+          console.error('Error emitting WebSocket events:', error);
+        }
+      });
+    }
 
     res.status(200).json(response);
   } catch (error) {

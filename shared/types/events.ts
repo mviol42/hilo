@@ -2,7 +2,6 @@
  * Socket.IO event types
  */
 
-import { Card } from './card';
 import { LobbyId, LobbyState } from './lobby';
 import { PlayerId, Player } from './player';
 import { PlayerView } from './game';
@@ -11,7 +10,12 @@ import { PlayerView } from './game';
 
 export interface LobbyJoinEvent {
   lobbyId: LobbyId;
-  playerName?: string;
+  playerId: PlayerId;
+}
+
+export interface LobbyPlayerReadiedEvent {
+  player: Player;
+  lobby: LobbyState;
 }
 
 export interface LobbyPlayerJoinedEvent {
@@ -34,23 +38,8 @@ export interface LobbyGameStartingEvent {
 }
 
 // Game events
-
-export interface GamePlayCardsEvent {
-  gameId: string;
-  playerId: PlayerId;
-  cards: Card[];
-}
-
-export interface GamePickUpPileEvent {
-  gameId: string;
-  playerId: PlayerId;
-}
-
-export interface GameSelectFaceUpEvent {
-  gameId: string;
-  playerId: PlayerId;
-  cards: Card[];
-}
+// NOTE: Game mutations go through HTTP API, not WebSocket events.
+// These events are server-to-client notifications only.
 
 export interface GameStateUpdateEvent {
   gameState: PlayerView;
@@ -71,12 +60,11 @@ export interface GamePlayerWonEvent {
 }
 
 // Client-to-Server event map
+// NOTE: WebSockets are READ-ONLY for the client. All mutations go through HTTP API.
+// These events are only for subscribing/unsubscribing to room notifications.
 export interface ClientToServerEvents {
   'lobby:join': (data: LobbyJoinEvent) => void;
   'lobby:leave': (data: { lobbyId: LobbyId; playerId: PlayerId }) => void;
-  'game:playCards': (data: GamePlayCardsEvent) => void;
-  'game:pickUpPile': (data: GamePickUpPileEvent) => void;
-  'game:selectFaceUp': (data: GameSelectFaceUpEvent) => void;
 }
 
 // Error event
@@ -87,6 +75,7 @@ export interface ErrorEvent {
 // Server-to-Client event map
 export interface ServerToClientEvents {
   'lobby:playerJoined': (data: LobbyPlayerJoinedEvent) => void;
+  'lobby:playerReadied': (data: LobbyPlayerReadiedEvent) => void;
   'lobby:playerLeft': (data: LobbyPlayerLeftEvent) => void;
   'lobby:leaderChanged': (data: LobbyLeaderChangedEvent) => void;
   'lobby:gameStarting': (data: LobbyGameStartingEvent) => void;
