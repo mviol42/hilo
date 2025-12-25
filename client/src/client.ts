@@ -181,16 +181,6 @@ export class GameClient {
         this.state.reset();
         break;
       } else if (command === 'start') {
-        if (!currentState.isLeader) {
-          this.ui.warning('Only the leader can start the game');
-          continue;
-        }
-
-        if (currentState.lobby && currentState.lobby.players.length < 2) {
-          this.ui.warning('Need at least 2 players to start');
-          continue;
-        }
-
         try {
           const { gameState } = await this.api.startGame(currentState.lobbyId, currentState.playerId);
           this.ui.success('Starting game...');

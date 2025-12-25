@@ -114,7 +114,7 @@ export class LobbyService {
    */
   canStartGame(lobbyId: LobbyId, playerId: PlayerId): boolean {
     const lobby = this.lobbies.get(lobbyId);
-
+    console.log(lobby?.players.size)
     if (!lobby) {
       throw new Error('Lobby not found');
     }
