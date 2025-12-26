@@ -6,9 +6,11 @@ import express, { Express } from 'express';
 import { createServer as createHttpServer, Server } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
+import path from 'path';
 import { httpLogger } from './middleware/httpLogger';
 import { createSocketLogger } from './middleware/socketLogger';
 import { logger } from './config/logger';
+import { NODE_ENV } from './config/constants';
 
 export async function createServer() {
   const app: Express = express();
@@ -28,9 +30,34 @@ export async function createServer() {
   app.use(express.json());
   app.use(httpLogger);
 
-  // Health check
-  app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
+  // Health check - verify Redis connectivity
+  app.get('/health', async (req, res) => {
+    try {
+      const { redisService } = await import('./services/redisService');
+      const redisAvailable = redisService.isAvailable();
+
+      if (!redisAvailable) {
+        return res.status(503).json({
+          status: 'unhealthy',
+          redis: 'disconnected'
+        });
+      }
+
+      // Test Redis connectivity with a ping
+      const client = redisService.getClient();
+      await client.ping();
+
+      res.json({
+        status: 'ok',
+        redis: 'connected'
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: 'unhealthy',
+        redis: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   });
 
   // API routes
@@ -48,6 +75,21 @@ export async function createServer() {
 
   app.use('/api/lobby', lobbyRouter);
   app.use('/api/game', gameRouter);
+
+  // Serve frontend static files in production
+  if (NODE_ENV === 'production') {
+    const frontendPath = path.join(__dirname, '../../frontend/dist');
+    app.use(express.static(frontendPath));
+
+    // Handle client-side routing - serve index.html for all non-API routes
+    app.get('*', (req, res, next) => {
+      // Skip API routes and socket.io
+      if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+        return next();
+      }
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+  }
 
   // Start lobby cleanup
   await lobbyService.startCleanup();

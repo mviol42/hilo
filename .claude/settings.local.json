@@ -16,7 +16,17 @@
       "Bash(ls:*)",
       "Bash(npm test:*)",
       "Bash(npx tsc --noEmit)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(docker compose build:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker build:*)",
+      "Bash(chmod:*)",
+      "Bash(docker:*)",
+      "Bash(docker version:*)",
+      "Skill(context7)",
+      "Bash(docker-compose:*)",
+      "Bash(tee:*)",
+      "Bash(pkill:*)"
     ]
   }
 }
