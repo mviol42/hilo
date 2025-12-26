@@ -28,8 +28,6 @@ services:
       context: .
       dockerfile: Dockerfile
       network: host
-      args:
-        - BUILDKIT_INLINE_CACHE=1
     container_name: hilo-app
     restart: unless-stopped
     ports:
