@@ -35,7 +35,7 @@ export const gameRouter = Router();
  * POST /api/game/start
  * Start a game (leader only)
  */
-gameRouter.post('/start', (req: Request, res: Response) => {
+gameRouter.post('/start', async (req: Request, res: Response) => {
   try {
     const { lobbyId, playerId } = req.body as StartGameRequest;
 
@@ -47,10 +47,10 @@ gameRouter.post('/start', (req: Request, res: Response) => {
     }
 
     // Validate player can start game
-    lobbyService.canStartGame(lobbyId, playerId);
+    await lobbyService.canStartGame(lobbyId, playerId);
 
     // Get lobby to extract player IDs in turn order
-    const lobby = lobbyService.getLobby(lobbyId);
+    const lobby = await lobbyService.getLobby(lobbyId);
     if (!lobby) {
       return res.status(404).json({
         error: 'Not found',
@@ -59,15 +59,15 @@ gameRouter.post('/start', (req: Request, res: Response) => {
     }
 
     // Transition lobby to in-game status
-    lobbyService.transitionToGame(lobbyId);
+    await lobbyService.transitionToGame(lobbyId);
 
     // Create game with players from lobby
     // lobbyId serves as the permanent room ID for Socket.IO
     const playerIds = Array.from(lobby.players.keys());
-    const gameState = gameService.createGame(lobbyId, playerIds);
+    const gameState = await gameService.createGame(lobbyId, playerIds);
 
     // Return game state for the requesting player
-    const playerView = gameService.getPlayerView(gameState.id, playerId);
+    const playerView = await gameService.getPlayerView(gameState.id, playerId);
 
     if (!playerView) {
       throw new Error('Failed to get player view');
@@ -91,7 +91,7 @@ gameRouter.post('/start', (req: Request, res: Response) => {
           // Broadcast initial game state to all players in the room
           const sockets = await socketIo.in(roomId).fetchSockets();
           for (const pid of playerIds) {
-            const pView = gameService.getPlayerView(gameState.id, pid);
+            const pView = await gameService.getPlayerView(gameState.id, pid);
             if (pView) {
               for (const socket of sockets) {
                 const socketData = socket.data as any;
@@ -180,7 +180,7 @@ gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
     }
 
     // Get game state
-    const game = gameService.getGame(gameId);
+    const game = await gameService.getGame(gameId);
     if (!game) {
       return res.status(404).json({
         error: 'Not found',
@@ -212,7 +212,7 @@ gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
     }
 
     // Select face-up cards
-    const updatedGame = gameService.selectFaceUp(gameId, playerId, cardIndices);
+    const updatedGame = await gameService.selectFaceUp(gameId, playerId, cardIndices);
 
     // Log action to Redis
     const logEntry: GameLogEntry = {
@@ -231,15 +231,15 @@ gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
       await broadcastGameState(io, gameId, updatedGame.turnOrder);
 
       // Check if all players have selected
-      if (gameService.allPlayersReady(gameId)) {
+      if (await gameService.allPlayersReady(gameId)) {
         // Start the game
-        const startedGame = gameService.startGamePlay(gameId);
+        const startedGame = await gameService.startGamePlay(gameId);
 
         // Broadcast updated state with first active player
         await broadcastGameState(io, gameId, startedGame.turnOrder);
 
         // Emit turn change event to room
-        const roomId = gameService.getRoomIdFromGame(gameId);
+        const roomId = await gameService.getRoomIdFromGame(gameId);
         if (roomId) {
           io.to(roomId).emit('game:turnChange', {
             activePlayerId: startedGame.activePlayerId,
@@ -249,7 +249,7 @@ gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
     }
 
     // Return player's view
-    const playerView = gameService.getPlayerView(gameId, playerId);
+    const playerView = await gameService.getPlayerView(gameId, playerId);
     if (!playerView) {
       throw new Error('Failed to get player view');
     }
@@ -284,7 +284,7 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
     }
 
     // Play the cards
-    const { gameState, blowUp, winner, cardsPlayed } = gameService.playCardsAction(gameId, playerId, cards, faceDownIndex);
+    const { gameState, blowUp, winner, cardsPlayed } = await gameService.playCardsAction(gameId, playerId, cards, faceDownIndex);
 
     // Log action to Redis
     const action: 'play_cards' | 'blow_up' = blowUp ? 'blow_up' : 'play_cards';
@@ -305,7 +305,7 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
 
     // Broadcast via WebSocket
     if (io) {
-      const roomId = gameService.getRoomIdFromGame(gameId);
+      const roomId = await gameService.getRoomIdFromGame(gameId);
       if (roomId) {
         // If blow-up occurred, notify all players in room
         if (blowUp && cardsPlayed.length > 0) {
@@ -339,7 +339,7 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
     }
 
     // Return player's view
-    const playerView = gameService.getPlayerView(gameId, playerId);
+    const playerView = await gameService.getPlayerView(gameId, playerId);
     if (!playerView) {
       throw new Error('Failed to get player view');
     }
@@ -376,7 +376,7 @@ gameRouter.post('/pickup-pile', async (req: Request, res: Response) => {
     }
 
     // Pick up the pile
-    const updatedGame = gameService.pickUpPileAction(gameId, playerId);
+    const updatedGame = await gameService.pickUpPileAction(gameId, playerId);
 
     // Log action to Redis
     const logEntry: GameLogEntry = {
@@ -391,7 +391,7 @@ gameRouter.post('/pickup-pile', async (req: Request, res: Response) => {
 
     // Broadcast via WebSocket
     if (io) {
-      const roomId = gameService.getRoomIdFromGame(gameId);
+      const roomId = await gameService.getRoomIdFromGame(gameId);
       if (roomId) {
         // Broadcast state update to all players
         await broadcastGameState(io, gameId, updatedGame.turnOrder);
@@ -404,7 +404,7 @@ gameRouter.post('/pickup-pile', async (req: Request, res: Response) => {
     }
 
     // Return player's view
-    const playerView = gameService.getPlayerView(gameId, playerId);
+    const playerView = await gameService.getPlayerView(gameId, playerId);
     if (!playerView) {
       throw new Error('Failed to get player view');
     }
@@ -432,7 +432,7 @@ async function broadcastGameState(
   playerIds: PlayerId[]
 ): Promise<void> {
   // Get the room ID for this game
-  const roomId = gameService.getRoomIdFromGame(gameId);
+  const roomId = await gameService.getRoomIdFromGame(gameId);
   if (!roomId) {
     return;
   }
@@ -441,7 +441,7 @@ async function broadcastGameState(
   const sockets = await io.in(roomId).fetchSockets();
 
   for (const playerId of playerIds) {
-    const playerView = gameService.getPlayerView(gameId, playerId);
+    const playerView = await gameService.getPlayerView(gameId, playerId);
     if (playerView) {
       // Find the socket for this player
       for (const socket of sockets) {

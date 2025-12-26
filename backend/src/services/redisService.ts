@@ -57,8 +57,17 @@ export class RedisService {
   private isConnected = false;
   private isEnabled: boolean;
 
-  constructor() {
+  /**
+   * Create a new RedisService instance
+   * @param clientOverride - Optional Redis client for dependency injection (testing)
+   */
+  constructor(clientOverride?: RedisClientType) {
     this.isEnabled = REDIS_ENABLED;
+    if (clientOverride) {
+      this.client = clientOverride;
+      this.isConnected = true;
+      this.isEnabled = true;
+    }
   }
 
   /**
@@ -129,13 +138,24 @@ export class RedisService {
   }
 
   /**
+   * Get the Redis client instance (for creating KVObjectStore instances)
+   * @throws Error if client is not available
+   */
+  getClient(): RedisClientType {
+    if (!this.client) {
+      throw new Error('[Redis] Client not available');
+    }
+    return this.client;
+  }
+
+  /**
    * Save game state to Redis
    */
   async saveGameState(gameState: GameState): Promise<void> {
     if (!this.isAvailable()) return;
 
     try {
-      const key = `game:${gameState.id}:state`;
+      const key = `hilo:game:${gameState.id}:state`;
       const serialized = this.serializeGameState(gameState);
 
       // Determine TTL based on game phase
@@ -160,7 +180,7 @@ export class RedisService {
     if (!this.isAvailable()) return null;
 
     try {
-      const key = `game:${gameId}:state`;
+      const key = `hilo:game:${gameId}:state`;
       const data = await this.client!.get(key);
 
       if (!data) return null;
@@ -180,7 +200,7 @@ export class RedisService {
     if (!this.isAvailable()) return;
 
     try {
-      const key = `game:${gameId}:log`;
+      const key = `hilo:game:${gameId}:log`;
       const serialized = {
         ...logEntry,
         timestamp: logEntry.timestamp.toISOString(),
@@ -202,7 +222,7 @@ export class RedisService {
     if (!this.isAvailable()) return [];
 
     try {
-      const key = `game:${gameId}:log`;
+      const key = `hilo:game:${gameId}:log`;
       const entries = await this.client!.lRange(key, 0, -1);
 
       return entries.map((entry) => {
@@ -219,13 +239,28 @@ export class RedisService {
   }
 
   /**
+   * Delete game state and log from Redis
+   */
+  async deleteGame(gameId: string): Promise<void> {
+    if (!this.isAvailable()) return;
+
+    try {
+      const stateKey = `hilo:game:${gameId}:state`;
+      const logKey = `hilo:game:${gameId}:log`;
+      await this.client!.del([stateKey, logKey]);
+    } catch (error) {
+      console.error('[Redis] Failed to delete game:', error);
+    }
+  }
+
+  /**
    * Save lobby state to Redis
    */
   async saveLobby(lobby: Lobby): Promise<void> {
     if (!this.isAvailable()) return;
 
     try {
-      const key = `lobby:${lobby.id}`;
+      const key = `hilo:lobby:${lobby.id}:state`;
       const serialized = {
         id: lobby.id,
         players: Object.fromEntries(lobby.players),
@@ -248,7 +283,7 @@ export class RedisService {
     if (!this.isAvailable()) return null;
 
     try {
-      const key = `lobby:${lobbyId}`;
+      const key = `hilo:lobby:${lobbyId}:state`;
       const data = await this.client!.get(key);
 
       if (!data) return null;
@@ -269,13 +304,27 @@ export class RedisService {
   }
 
   /**
+   * Delete lobby from Redis
+   */
+  async deleteLobby(lobbyId: LobbyId): Promise<void> {
+    if (!this.isAvailable()) return;
+
+    try {
+      const key = `hilo:lobby:${lobbyId}:state`;
+      await this.client!.del(key);
+    } catch (error) {
+      console.error('[Redis] Failed to delete lobby:', error);
+    }
+  }
+
+  /**
    * Save player session to Redis
    */
   async setPlayerSession(session: PlayerSession): Promise<void> {
     if (!this.isAvailable()) return;
 
     try {
-      const key = `player:${session.playerId}:session`;
+      const key = `hilo:player:${session.playerId}:session`;
       const serialized = {
         ...session,
         lastActive: session.lastActive.toISOString(),
@@ -294,7 +343,7 @@ export class RedisService {
     if (!this.isAvailable()) return null;
 
     try {
-      const key = `player:${playerId}:session`;
+      const key = `hilo:player:${playerId}:session`;
       const data = await this.client!.get(key);
 
       if (!data) return null;
@@ -317,7 +366,7 @@ export class RedisService {
     if (!this.isAvailable()) return;
 
     try {
-      const key = `player:${playerId}:session`;
+      const key = `hilo:player:${playerId}:session`;
       await this.client!.del(key);
     } catch (error) {
       console.error('[Redis] Failed to clear player session:', error);

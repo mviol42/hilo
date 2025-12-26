@@ -45,7 +45,7 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
       const roomId = lobbyId; // lobbyId serves as the permanent room ID
 
       // Get the lobby
-      const lobby = lobbyService.getLobby(lobbyId);
+      const lobby = await lobbyService.getLobby(lobbyId);
       if (!lobby) {
         throw new Error('Lobby not found');
       }
@@ -57,7 +57,7 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
       }
 
       // Update socket ID for the existing player
-      lobbyService.updateSocketId(lobbyId, playerId, socket.id);
+      await lobbyService.updateSocketId(lobbyId, playerId, socket.id);
 
       // Store in socket data
       (socket.data as SocketData).playerId = playerId;
@@ -77,7 +77,7 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
       await socket.join(roomId);
 
       // Get updated lobby state
-      const lobbyState = lobbyService.getLobbyState(lobbyId);
+      const lobbyState = await lobbyService.getLobbyState(lobbyId);
       if (!lobbyState) {
         throw new Error('Lobby not found after join');
       }
@@ -136,7 +136,7 @@ function handleDisconnect(io: TypedServer, socket: TypedSocket) {
       // If player was in a lobby/room, handle leave
       if (playerId && lobbyId) {
         const roomId = lobbyId; // lobbyId serves as the permanent room ID
-        const lobbyBefore = lobbyService.getLobby(lobbyId);
+        const lobbyBefore = await lobbyService.getLobby(lobbyId);
         if (!lobbyBefore) {
           return; // Lobby already gone
         }
@@ -145,7 +145,7 @@ function handleDisconnect(io: TypedServer, socket: TypedSocket) {
         const oldLeaderId = lobbyBefore.leaderId;
 
         // Leave the lobby
-        lobbyService.leaveLobby(lobbyId, playerId);
+        await lobbyService.leaveLobby(lobbyId, playerId);
 
         // Clear session from Redis
         redisService.clearPlayerSession(playerId).catch((err) => {
@@ -153,7 +153,7 @@ function handleDisconnect(io: TypedServer, socket: TypedSocket) {
         });
 
         // Get updated lobby state
-        const lobbyAfter = lobbyService.getLobbyState(lobbyId);
+        const lobbyAfter = await lobbyService.getLobbyState(lobbyId);
 
         if (lobbyAfter) {
           // Notify remaining players in room

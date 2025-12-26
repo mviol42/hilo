@@ -26,9 +26,9 @@ describe('Game API', () => {
     await closeTestServer(testServer);
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all lobbies before each test
-    lobbyService.clearAll();
+    await lobbyService.clearAll();
   });
 
   describe('POST /api/game/start', () => {
@@ -114,7 +114,7 @@ describe('Game API', () => {
         .expect(200);
 
       // Verify lobby status changed
-      const lobby = lobbyService.getLobby(lobbyId);
+      const lobby = await lobbyService.getLobby(lobbyId);
       expect(lobby?.status).toBe('in_game');
     });
 

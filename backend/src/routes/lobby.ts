@@ -39,9 +39,9 @@ function isValidUUID(uuid: string): boolean {
  * POST /api/lobby/create
  * Create a new lobby
  */
-lobbyRouter.post('/create', (req: Request, res: Response) => {
+lobbyRouter.post('/create', async (req: Request, res: Response) => {
   try {
-    const lobby = lobbyService.createLobby();
+    const lobby = await lobbyService.createLobby();
 
     const response: CreateLobbyResponse = {
       lobbyId: lobby.id,
@@ -60,7 +60,7 @@ lobbyRouter.post('/create', (req: Request, res: Response) => {
  * POST /api/lobby/join
  * Join an existing lobby
  */
-lobbyRouter.post('/join', (req: Request, res: Response) => {
+lobbyRouter.post('/join', async (req: Request, res: Response) => {
   try {
     const { lobbyId, playerId, playerName } = req.body as JoinLobbyRequest;
 
@@ -85,8 +85,8 @@ lobbyRouter.post('/join', (req: Request, res: Response) => {
       });
     }
 
-    const player = lobbyService.joinLobby(lobbyId, playerId, playerName);
-    const lobbyState = lobbyService.getLobbyState(lobbyId);
+    const player = await lobbyService.joinLobby(lobbyId, playerId, playerName);
+    const lobbyState = await lobbyService.getLobbyState(lobbyId);
 
     if (!lobbyState) {
       return res.status(404).json({
@@ -137,7 +137,7 @@ lobbyRouter.post('/join', (req: Request, res: Response) => {
  * POST /api/lobby/ready
  * Leave a lobby
  */
-lobbyRouter.post('/ready', (req: Request, res: Response) => {
+lobbyRouter.post('/ready', async (req: Request, res: Response) => {
   try {
     const { lobbyId, playerId } = req.body as ReadyLobbyRequest;
 
@@ -148,10 +148,10 @@ lobbyRouter.post('/ready', (req: Request, res: Response) => {
       });
     }
 
-    const player = lobbyService.readyPlayer(lobbyId, playerId);
+    const player = await lobbyService.readyPlayer(lobbyId, playerId);
 
     // Get updated lobby state (may be null if lobby was removed)
-    const lobbyState = lobbyService.getLobbyState(lobbyId);
+    const lobbyState = await lobbyService.getLobbyState(lobbyId);
 
     const response: ReadyLobbyResponse = {
       success: true,
@@ -211,7 +211,7 @@ lobbyRouter.post('/ready', (req: Request, res: Response) => {
  * POST /api/lobby/leave
  * Leave a lobby
  */
-lobbyRouter.post('/leave', (req: Request, res: Response) => {
+lobbyRouter.post('/leave', async (req: Request, res: Response) => {
   try {
     const { lobbyId, playerId } = req.body as LeaveLobbyRequest;
 
@@ -223,14 +223,14 @@ lobbyRouter.post('/leave', (req: Request, res: Response) => {
     }
 
     // Get lobby state before leaving to check leader status
-    const lobbyBefore = lobbyService.getLobby(lobbyId);
+    const lobbyBefore = await lobbyService.getLobby(lobbyId);
     const wasLeader = lobbyBefore ? lobbyBefore.leaderId === playerId : false;
     const oldLeaderId = lobbyBefore?.leaderId;
 
-    lobbyService.leaveLobby(lobbyId, playerId);
+    await lobbyService.leaveLobby(lobbyId, playerId);
 
     // Get updated lobby state (may be null if lobby was removed)
-    const lobbyState = lobbyService.getLobbyState(lobbyId);
+    const lobbyState = await lobbyService.getLobbyState(lobbyId);
 
     const response: LeaveLobbyResponse = {
       success: true,
