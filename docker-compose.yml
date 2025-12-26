@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: hilo-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6380"
+    volumes:
+      # Persist Redis data to host mount
+      - ${REDIS_DATA_PATH:-/var/usr/hilo}:/data
+    command: redis-server --port 6380 --appendonly yes
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - hilo-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    container_name: hilo-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6380
+      - REDIS_ENABLED=true
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - hilo-network
+
+networks:
+  hilo-network:
+    driver: bridge
