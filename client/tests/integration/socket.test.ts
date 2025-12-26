@@ -16,12 +16,12 @@ describe('SocketClient Integration Tests', () => {
   let testServer: TestServer;
   let apiClient: ApiClient;
   let socketClient: SocketClient;
-  const testPort = 3001; // Use same port as backend tests
-  const baseURL = `http://localhost:${testPort}`;
+  let baseURL: string;
 
   beforeAll(async () => {
-    // Start test server
+    // Start test server with dynamic port
     testServer = await createTestServer();
+    baseURL = `http://localhost:${testServer.port}`;
 
     // Create API client
     apiClient = new ApiClient(baseURL);
@@ -168,7 +168,11 @@ describe('SocketClient Integration Tests', () => {
       const lobbyId = createResponse.lobbyId;
       const player1Response = await apiClient.joinLobby(lobbyId, 'Player1');
       const player1Id = player1Response.playerId;
-      await apiClient.joinLobby(lobbyId, 'Player2');
+      const player2Response = await apiClient.joinLobby(lobbyId, 'Player2');
+      const player2Id = player2Response.playerId;
+
+      // Mark player 2 as ready
+      await apiClient.readyPlayer(lobbyId, player2Id);
 
       // Connect first player via socket
       await socketClient.connect();

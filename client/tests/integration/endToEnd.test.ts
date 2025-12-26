@@ -14,12 +14,12 @@ import {
 
 describe('End-to-End Integration Tests', () => {
   let testServer: TestServer;
-  const testPort = 3001; // Use same port as backend tests
-  const baseURL = `http://localhost:${testPort}`;
+  let baseURL: string;
 
   beforeAll(async () => {
-    // Start test server
+    // Start test server with dynamic port
     testServer = await createTestServer();
+    baseURL = `http://localhost:${testServer.port}`;
   });
 
   afterAll(async () => {
@@ -131,7 +131,11 @@ describe('End-to-End Integration Tests', () => {
       const player1Response = await apiClient.joinLobby(lobbyId, 'Player1');
       const player1Id = player1Response.playerId;
 
-      await apiClient.joinLobby(lobbyId, 'Player2');
+      const player2Response = await apiClient.joinLobby(lobbyId, 'Player2');
+      const player2Id = player2Response.playerId;
+
+      // Mark player 2 as ready
+      await apiClient.readyPlayer(lobbyId, player2Id);
 
       // 2. Connect both players via socket (read-only for notifications)
       const socket1 = new SocketClient(baseURL);
@@ -184,7 +188,11 @@ describe('End-to-End Integration Tests', () => {
 
       const player1Response = await apiClient.joinLobby(lobbyId, 'Player1');
       const player1Id = player1Response.playerId;
-      await apiClient.joinLobby(lobbyId, 'Player2');
+      const player2Response = await apiClient.joinLobby(lobbyId, 'Player2');
+      const player2Id = player2Response.playerId;
+
+      // Mark player 2 as ready
+      await apiClient.readyPlayer(lobbyId, player2Id);
 
       // Start game
       const gameResponse = await apiClient.startGame(lobbyId, player1Id);
