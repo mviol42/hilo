@@ -48,6 +48,7 @@ export interface PlayerView {
   myFaceDownPlayed: boolean[]; // For each facedown slot: true if played, false if unplayed
   otherPlayers: {
     [playerId: string]: {
+      name: string;
       handCount: number;
       faceUp: Card[];
       faceDownCount: number;
@@ -58,4 +59,6 @@ export interface PlayerView {
   activePlayerId: PlayerId;
   playableCards?: Card[]; // Only present if it's this player's turn
   winner?: PlayerId;
+  winnerName?: string;
+  playerNames: { [playerId: string]: string }; // Map of all player IDs to names
 }

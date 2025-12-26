@@ -72,7 +72,13 @@ class ApiClient {
   }
 
   async selectFaceUp(request: SelectFaceUpRequest): Promise<SelectFaceUpResponse> {
+    console.log('[ApiClient] selectFaceUp request:', {
+      gameId: request.gameId?.substring(0, 8),
+      playerId: request.playerId?.substring(0, 8),
+      cards: request.cards?.length,
+    })
     const response = await this.client.post<SelectFaceUpResponse>('/api/game/select-faceup', request)
+    console.log('[ApiClient] selectFaceUp response received, phase:', response.data.gameState.phase)
     return response.data
   }
 

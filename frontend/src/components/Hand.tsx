@@ -62,7 +62,7 @@ export function Hand({
               selectable={canSelect(card)}
               selected={isSelected(card)}
               playable={isPlayable(card)}
-              dimmed={!canSelect(card) && selectedRank !== null}
+              dimmed={!canSelect(card)}
               onClick={() => onCardClick?.(card)}
             />
           </div>

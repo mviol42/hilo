@@ -28,6 +28,8 @@ export class GameService {
     const gameState = initializeGame(playerIds, roomId);
     const dealtState = dealCards(gameState);
 
+    console.log(`[GameService] Creating game - roomId: ${roomId.substring(0, 8)}, gameId: ${dealtState.id}, match: ${dealtState.id === roomId}`);
+
     // Save to Redis as source of truth
     await redisService.saveGameState(dealtState);
 
@@ -89,7 +91,9 @@ export class GameService {
    * @returns The game state or null if not found
    */
   async getGame(gameId: string): Promise<GameState | null> {
-    return await redisService.getGameState(gameId);
+    const gameState = await redisService.getGameState(gameId);
+    console.log(`[GameService] getGame - gameId: ${gameId.substring(0, 20)}..., found: ${gameState !== null}`);
+    return gameState;
   }
 
   /**
@@ -164,12 +168,25 @@ export class GameService {
       return null;
     }
 
+    // Get lobby to fetch player names
+    const lobbyId = await this.getRoomIdByGameId(gameId);
+    const lobby = lobbyId ? await redisService.getLobby(lobbyId) : null;
+
+    // Build player names map
+    const playerNames: { [playerId: string]: string } = {};
+    if (lobby) {
+      for (const [pid, player] of lobby.players) {
+        playerNames[pid] = player.name;
+      }
+    }
+
     // Build other players object
-    const otherPlayers: { [playerId: string]: { handCount: number; faceUp: Card[]; faceDownCount: number } } = {};
+    const otherPlayers: { [playerId: string]: { name: string; handCount: number; faceUp: Card[]; faceDownCount: number } } = {};
 
     for (const [pid, pState] of game.players) {
       if (pid !== playerId) {
         otherPlayers[pid] = {
+          name: playerNames[pid] || `Player ${pid.substring(0, 8)}`,
           handCount: pState.hand.length,
           faceUp: pState.faceUp,
           faceDownCount: pState.faceDown.length,
@@ -193,6 +210,8 @@ export class GameService {
       activePlayerId: game.activePlayerId,
       playableCards,
       winner: game.winner,
+      winnerName: game.winner ? playerNames[game.winner] : undefined,
+      playerNames,
     };
   }
 

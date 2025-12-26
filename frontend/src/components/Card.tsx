@@ -49,10 +49,10 @@ export function Card({
   }
 
   // State classes
-  const selectableClass = selectable ? 'cursor-pointer hover:-translate-y-1 hover:shadow-lg' : ''
-  const selectedClass = selected ? 'border-blue-500 bg-blue-50 -translate-y-2 shadow-xl' : 'border-gray-800'
-  const playableClass = playable ? 'animate-pulse-green' : ''
   const dimmedClass = dimmed ? 'opacity-40 cursor-not-allowed' : ''
+  const selectableClass = selectable ? 'cursor-pointer hover:-translate-y-2 hover:shadow-lg' : ''
+  const selectedClass = selected ? 'border-blue-500 bg-blue-50 -translate-y-2 shadow-xl' : 'border-gray-800'
+  const playableClass = playable && selectable ? 'animate-pulse-green' : ''
   const faceDownClass = faceDown ? 'bg-gradient-to-br from-blue-700 to-blue-900 border-blue-900' : ''
 
   const className = [

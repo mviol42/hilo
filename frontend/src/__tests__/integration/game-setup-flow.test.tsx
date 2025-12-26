@@ -31,6 +31,7 @@ describe('Game Setup Flow Integration', () => {
     myFaceDownPlayed: [false, false, false],
     otherPlayers: {
       'player-2': {
+        name: 'Player 2',
         handCount: 6,
         faceUp: [],
         faceDownCount: 3,
@@ -40,6 +41,10 @@ describe('Game Setup Flow Integration', () => {
     deckCount: 40,
     activePlayerId: 'player-1',
     playableCards: undefined,
+    playerNames: {
+      'player-1': 'Player 1',
+      'player-2': 'Player 2',
+    },
   }
 
   beforeEach(() => {
@@ -115,6 +120,7 @@ describe('Game Setup Flow Integration', () => {
       ],
       otherPlayers: {
         'player-1': {
+          name: 'Player 1',
           handCount: 6,
           faceUp: [],
           faceDownCount: 3,
@@ -174,6 +180,7 @@ describe('Game Setup Flow Integration', () => {
       ],
       otherPlayers: {
         'player-1': {
+          name: 'Player 1',
           handCount: 3,
           faceUp: [
             { rank: '2', suit: 'hearts' },

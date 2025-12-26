@@ -64,7 +64,10 @@ gameRouter.post('/start', async (req: Request, res: Response) => {
     // Create game with players from lobby
     // lobbyId serves as the permanent room ID for Socket.IO
     const playerIds = Array.from(lobby.players.keys());
+    console.log(`[GameRoutes] Starting game for lobby ${lobbyId.substring(0, 8)}, players: ${playerIds.map(p => p.substring(0, 8)).join(', ')}`);
+
     const gameState = await gameService.createGame(lobbyId, playerIds);
+    console.log(`[GameRoutes] Game created with ID: ${gameState.id.substring(0, 8)}, gameId === lobbyId: ${gameState.id === lobbyId}`);
 
     // Return game state for the requesting player
     const playerView = await gameService.getPlayerView(gameState.id, playerId);
@@ -84,18 +87,22 @@ gameRouter.post('/start', async (req: Request, res: Response) => {
       const socketIo = io; // Capture to avoid null check inside callback
       setImmediate(async () => {
         try {
+          console.log(`[GameRoutes] Emitting lobby:gameStarting to room ${roomId.substring(0, 8)}, gameId: ${gameState.id.substring(0, 8)}`);
           socketIo.to(roomId).emit('lobby:gameStarting', {
             gameId: gameState.id,
           });
 
           // Broadcast initial game state to all players in the room
           const sockets = await socketIo.in(roomId).fetchSockets();
+          console.log(`[GameRoutes] Found ${sockets.length} sockets in room ${roomId.substring(0, 8)}`);
+
           for (const pid of playerIds) {
             const pView = await gameService.getPlayerView(gameState.id, pid);
             if (pView) {
               for (const socket of sockets) {
                 const socketData = socket.data as any;
                 if (socketData.playerId === pid) {
+                  console.log(`[GameRoutes] Sending game:stateUpdate to player ${pid.substring(0, 8)}, socket: ${socket.id}, phase: ${pView.phase}`);
                   socket.emit('game:stateUpdate', {
                     gameState: pView,
                   });
@@ -165,6 +172,8 @@ gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
   try {
     const { gameId, playerId, cards } = req.body as SelectFaceUpRequest;
 
+    console.log(`[GameRoutes] select-faceup request - gameId: ${gameId?.substring(0, 8)}, playerId: ${playerId?.substring(0, 8)}, cards: ${cards?.length}`);
+
     if (!gameId || !playerId || !cards || !Array.isArray(cards)) {
       return res.status(400).json({
         error: 'Bad request',
@@ -182,19 +191,25 @@ gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
     // Get game state
     const game = await gameService.getGame(gameId);
     if (!game) {
+      console.log(`[GameRoutes] ERROR: Game not found for gameId: ${gameId.substring(0, 8)}`);
       return res.status(404).json({
         error: 'Not found',
         message: 'Game not found',
       });
     }
 
+    console.log(`[GameRoutes] Game found - players: ${Array.from(game.players.keys()).map(p => p.substring(0, 8)).join(', ')}`);
+
     const playerState = game.players.get(playerId);
     if (!playerState) {
+      console.log(`[GameRoutes] ERROR: Player ${playerId.substring(0, 8)} not found in game. Available players: ${Array.from(game.players.keys()).map(p => p.substring(0, 8)).join(', ')}`);
       return res.status(404).json({
         error: 'Not found',
         message: 'Player not found in game',
       });
     }
+
+    console.log(`[GameRoutes] Player ${playerId.substring(0, 8)} found in game, hand size: ${playerState.hand.length}`);
 
     // Find indices of the selected cards
     const cardIndices: number[] = [];
@@ -348,6 +363,7 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
       gameState: playerView,
       blowUp,
       winner,
+      cardsPlayed,
     };
 
     res.status(200).json(response);

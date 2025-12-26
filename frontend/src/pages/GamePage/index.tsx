@@ -19,6 +19,11 @@ export function GamePage() {
     text: string
     color: string
   } | null>(null)
+  const [slideAnimation, setSlideAnimation] = useState<'top' | 'bottom' | null>(null)
+  const [revealedCard, setRevealedCard] = useState<{
+    card: CardType
+    outcome: 'pile' | 'pickup'
+  } | null>(null)
 
   // Redirect if no game ID and fetch initial game state
   useEffect(() => {
@@ -54,7 +59,7 @@ export function GamePage() {
       } else if (reason === 'four_of_kind') {
         showAnimation('Bonus play!', 'text-blue-500')
       }
-      setTimeout(() => gameDispatch({ type: 'CLEAR_LAST_EVENT' }), 3000)
+      setTimeout(() => gameDispatch({ type: 'CLEAR_LAST_EVENT' }), 2000)
     } else if (lastEvent.type === 'player_won') {
       const winnerName = lastEvent.data.winnerName
       showAnimation(`${winnerName} won!`, 'text-yellow-500')
@@ -63,7 +68,7 @@ export function GamePage() {
 
   const showAnimation = (text: string, color: string) => {
     setAnimationMessage({ text, color })
-    setTimeout(() => setAnimationMessage(null), 3000)
+    setTimeout(() => setAnimationMessage(null), 2000)
   }
 
   // SETUP PHASE: Select face-up cards
@@ -82,6 +87,8 @@ export function GamePage() {
   const handleSetupConfirm = async () => {
     if (!gameId || !playerId || setupSelectedCards.length !== 3) return
 
+    console.log('[GamePage] handleSetupConfirm - gameId:', gameId?.substring(0, 8), 'playerId:', playerId?.substring(0, 8))
+
     try {
       setIsLoading(true)
       const response = await apiClient.selectFaceUp({
@@ -93,8 +100,14 @@ export function GamePage() {
       setSetupSelectedCards([])
       showToast('Face-up cards selected!', 'success')
     } catch (error: any) {
-      console.error('Failed to select face-up cards:', error)
-      showToast('Failed to select face-up cards', 'error')
+      console.error('[GamePage] Failed to select face-up cards:', error)
+      console.error('[GamePage] Error details:', {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        gameId: gameId?.substring(0, 8),
+        playerId: playerId?.substring(0, 8),
+      })
+      showToast(error.response?.data?.message || 'Failed to select face-up cards', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -156,7 +169,63 @@ export function GamePage() {
   }
 
   const handleToggleFaceUp = () => {
+    // Set animation direction based on current state
+    // If currently showing face up, hand will slide in from bottom
+    // If currently showing hand, face up will slide in from top
+    setSlideAnimation(showFaceUp ? 'bottom' : 'top')
     gameDispatch({ type: 'TOGGLE_FACE_UP' })
+
+    // Clear animation class after animation completes
+    setTimeout(() => setSlideAnimation(null), 400)
+  }
+
+  const handleFaceDownCardClick = async (index: number) => {
+    if (!gameId || !playerId) return
+
+    try {
+      setIsLoading(true)
+      const response = await apiClient.playCards({
+        gameId,
+        playerId,
+        cards: [],
+        faceDownIndex: index,
+      })
+
+      // Show the revealed card with animation
+      if (response.cardsPlayed && response.cardsPlayed.length > 0) {
+        const revealedCardData = response.cardsPlayed[0]
+
+        // Determine outcome based on whether player picked up pile
+        // If the player's hand increased significantly, they picked up the pile
+        const oldHandSize = gameState?.myHand.length || 0
+        const newHandSize = response.gameState.myHand.length
+        const pickedUpPile = newHandSize > oldHandSize + 1 // More than just drawing a card
+
+        setRevealedCard({
+          card: revealedCardData,
+          outcome: pickedUpPile ? 'pickup' : 'pile'
+        })
+
+        // Wait for reveal animation (0.8s) + outcome animation (0.5s)
+        await new Promise(resolve => setTimeout(resolve, 1300))
+        setRevealedCard(null)
+      }
+
+      // Update game state after animation
+      gameDispatch({ type: 'SET_GAME_STATE', payload: response.gameState })
+
+      // Don't show additional animations - the reveal already showed the outcome
+      // Winner animation is still important though
+      if (response.winner) {
+        showAnimation('You won!', 'text-yellow-500')
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to play card'
+      showToast(message, 'error')
+      setRevealedCard(null)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (!gameId) {
@@ -207,7 +276,7 @@ export function GamePage() {
           </h1>
           {gameState.winner && gameState.winner !== playerId && (
             <p className="text-2xl text-gray-300 mb-8">
-              Player {gameState.winner.substring(0, 8)}... won!
+              {gameState.winnerName || `Player ${gameState.winner.substring(0, 8)}`} won!
             </p>
           )}
           <Button onClick={() => navigate('/')} variant="primary" size="large">
@@ -320,6 +389,25 @@ export function GamePage() {
         </div>
       )}
 
+      {/* Revealed Card Animation */}
+      {revealedCard && (
+        <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-50 bg-black/50">
+          <div className="flex flex-col items-center gap-4">
+            <div className="text-2xl font-bold text-white mb-4">
+              You played:
+            </div>
+            <div className="animate-card-reveal">
+              <Card card={revealedCard.card} size="large" />
+            </div>
+            <div className={`text-xl font-semibold mt-4 ${
+              revealedCard.outcome === 'pile' ? 'text-green-400' : 'text-orange-400'
+            }`}>
+              {revealedCard.outcome === 'pile' ? 'Added to pile!' : 'Pick up the pile!'}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto space-y-4">
         {/* Header */}
         <div className="text-center">
@@ -349,7 +437,7 @@ export function GamePage() {
           <h2 className="text-lg font-semibold mb-2">Other Players</h2>
           {Object.entries(gameState.otherPlayers).map(([pid, player]) => (
             <div key={pid} className="flex justify-between items-center mb-2">
-              <span className="text-gray-300">Player {pid.substring(0, 8)}</span>
+              <span className="text-gray-300">{player.name}</span>
               <div className="flex gap-1">
                 <span className="text-sm text-gray-400">Hand: {player.handCount}</span>
                 <span className="text-sm text-gray-400">Face-up: {player.faceUp.length}</span>
@@ -360,10 +448,10 @@ export function GamePage() {
         </div>
 
         {/* Toggle Button - only show if player has hand cards */}
-        {gameState.myHand.length > 0 && (
+        {(gameState.myHand.length > 0 && gameState.myFaceUp.length > 0) &&  (
           <div className="flex justify-center">
             <Button onClick={handleToggleFaceUp} variant="secondary">
-              {showFaceUp ? 'Hide Face Up Cards' : 'Show Face Up Cards'}
+              {showFaceUp ? 'Show Hand' : 'Show Face Up Cards'}
             </Button>
           </div>
         )}
@@ -383,7 +471,10 @@ export function GamePage() {
                 : 'Your Face-Up Cards'
             }
             size="medium"
-            className="bg-gray-800/50 rounded-lg p-4"
+            className={`bg-gray-800/50 rounded-lg p-4 ${
+              slideAnimation === 'top' ? 'animate-slide-in-from-top' :
+              slideAnimation === 'bottom' ? 'animate-slide-in-from-bottom' : ''
+            }`}
           />
         )}
 
@@ -400,34 +491,7 @@ export function GamePage() {
                       size="medium"
                       faceDown
                       selectable={isMyTurn}
-                      onClick={
-                        isMyTurn
-                          ? async () => {
-                              if (!gameId || !playerId) return
-                              try {
-                                setIsLoading(true)
-                                const response = await apiClient.playCards({
-                                  gameId,
-                                  playerId,
-                                  cards: [],
-                                  faceDownIndex: index,
-                                })
-                                gameDispatch({ type: 'SET_GAME_STATE', payload: response.gameState })
-                                if (response.blowUp) {
-                                  showAnimation('Pile cleared!', 'text-green-500')
-                                }
-                                if (response.winner) {
-                                  showAnimation('You won!', 'text-yellow-500')
-                                }
-                              } catch (error: any) {
-                                const message = error.response?.data?.message || 'Failed to play card'
-                                showToast(message, 'error')
-                              } finally {
-                                setIsLoading(false)
-                              }
-                            }
-                          : undefined
-                      }
+                      onClick={isMyTurn ? () => handleFaceDownCardClick(index) : undefined}
                     />
                   )}
                   {isPlayed && (
@@ -454,29 +518,18 @@ export function GamePage() {
               onClick={handleSubmitPlay}
               variant="primary"
               size="large"
-              disabled={selectedCards.length === 0}
+              disabled={selectedCards.length === 0 || (gameState.playableCards && gameState.playableCards.length === 0)}
             >
               Play Selected Cards
             </Button>
-            <Button
+            {(gameState.playableCards && gameState.playableCards.length === 0) && (
+              <Button
               onClick={handlePickUpPile}
               variant="danger"
             >
-              Pick Up Pile
+              Pick Up Pile (No valid plays)
             </Button>
-          </div>
-        )}
-
-        {/* Pick up pile button for facedown phase */}
-        {isMyTurn && isPlayingFaceDown && (
-          <div className="flex justify-center">
-            <Button
-              onClick={handlePickUpPile}
-              variant="danger"
-              size="large"
-            >
-              Pick Up Pile
-            </Button>
+            )}
           </div>
         )}
       </div>

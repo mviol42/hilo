@@ -79,6 +79,7 @@ export interface PlayCardsResponse {
   gameState: PlayerView;
   blowUp: boolean;
   winner: boolean;
+  cardsPlayed: Card[]; // The actual cards that were played (useful for revealing face-down cards)
 }
 
 export interface PickUpPileRequest {

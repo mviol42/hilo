@@ -76,11 +76,15 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
       // Join Socket.IO room (room persists across lobby and game states)
       await socket.join(roomId);
 
+      console.log(`[LobbyHandlers] Player ${playerId.substring(0, 8)} joined lobby ${lobbyId.substring(0, 8)}, socket: ${socket.id}`);
+
       // Get updated lobby state
       const lobbyState = await lobbyService.getLobbyState(lobbyId);
       if (!lobbyState) {
         throw new Error('Lobby not found after join');
       }
+
+      console.log(`[LobbyHandlers] Lobby state after join - players: ${lobbyState.players.map(p => p.id.substring(0, 8)).join(', ')}`);
 
       // Notify all players in the room (including this socket)
       io.to(roomId).emit('lobby:playerJoined', {

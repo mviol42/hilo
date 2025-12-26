@@ -29,14 +29,18 @@ export function LobbyPage() {
   // Set up WebSocket listener for game starting
   useEffect(() => {
     const cleanup = socketManager.onLobbyGameStarting((data) => {
-      console.log('[LobbyPage] Game starting, navigating to game page:', data.gameId)
+      console.log('[LobbyPage] lobby:gameStarting event received:', {
+        gameId: data.gameId?.substring(0, 8),
+        lobbyId: lobbyId?.substring(0, 8),
+        playerId: playerId?.substring(0, 8),
+      })
       // Navigate to game page when leader starts game
       // Note: The initial game state should come via game:stateUpdate WebSocket event
       navigate(`/game?id=${data.gameId}`)
     })
 
     return cleanup
-  }, [navigate])
+  }, [navigate, lobbyId, playerId])
 
   const handleCopyLink = async () => {
     if (!lobbyId) return
@@ -48,6 +52,18 @@ export function LobbyPage() {
       showToast('Link copied to clipboard!', 'success')
     } else {
       showToast('Failed to copy link', 'error')
+    }
+  }
+
+  const handleCopyLobbyId = async () => {
+    if (!lobbyId) return
+
+    const success = await copyToClipboard(lobbyId)
+
+    if (success) {
+      showToast('Lobby ID copied to clipboard!', 'success')
+    } else {
+      showToast('Failed to copy lobby ID', 'error')
     }
   }
 
@@ -82,6 +98,8 @@ export function LobbyPage() {
   const handleStartGame = async () => {
     if (!lobbyId || !playerId) return
 
+    console.log('[LobbyPage] handleStartGame - lobbyId:', lobbyId?.substring(0, 8), 'playerId:', playerId?.substring(0, 8))
+
     try {
       setIsLoading(true)
       const response = await apiClient.startGame({
@@ -89,13 +107,16 @@ export function LobbyPage() {
         playerId,
       })
 
+      console.log('[LobbyPage] Game started successfully, gameState.id:', response.gameState.id?.substring(0, 20), 'navigating to:', `/game?id=${response.gameState.id}`)
+
       // Initialize game state from API response (for leader)
       gameDispatch({ type: 'SET_GAME_STATE', payload: response.gameState })
 
       // Game started successfully, navigate to game page
-      navigate(`/game?id=${lobbyId}`)
+      // IMPORTANT: Use gameState.id (not lobbyId) because gameId format is ${lobbyId}:game:${uuid}
+      navigate(`/game?id=${response.gameState.id}`)
     } catch (error: any) {
-      console.error('Failed to start game:', error)
+      console.error('[LobbyPage] Failed to start game:', error)
 
       const message = error.response?.data?.message
       if (message) {
@@ -147,9 +168,18 @@ export function LobbyPage() {
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Waiting Room</h1>
-          <p className="text-gray-600 text-sm font-mono">
-            Room ID: {lobbyId.substring(0, 8)}...
-          </p>
+          <div className="flex items-center justify-center gap-2">
+            <p className="text-gray-600 text-sm font-mono">
+              Room ID: {lobbyId.substring(0, 8)}...
+            </p>
+            <button
+              onClick={handleCopyLobbyId}
+              className="text-purple-600 hover:text-purple-700 p-1 rounded hover:bg-purple-50 transition-colors"
+              title="Copy lobby ID"
+            >
+              📋
+            </button>
+          </div>
         </div>
 
         <div className="space-y-6">
