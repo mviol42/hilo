@@ -152,6 +152,24 @@ export class ApiClient {
     return response.data;
   }
 
+  async playFaceDownCard(
+    gameId: string,
+    playerId: PlayerId,
+    faceDownIndex: number
+  ): Promise<{ gameState: PlayerView; blowUp: boolean; winner: boolean }> {
+    const response = await this.axios.post<{
+      gameState: PlayerView;
+      blowUp: boolean;
+      winner: boolean;
+    }>('/api/game/play-cards', {
+      gameId,
+      playerId,
+      cards: [], // Empty array for facedown cards
+      faceDownIndex,
+    });
+    return response.data;
+  }
+
   async pickUpPile(gameId: string, playerId: PlayerId): Promise<{ gameState: PlayerView }> {
     const response = await this.axios.post<{ gameState: PlayerView }>('/api/game/pickup-pile', {
       gameId,

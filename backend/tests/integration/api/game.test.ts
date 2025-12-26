@@ -51,9 +51,15 @@ describe('Game API', () => {
       const leaderId = joinResponse1.body.playerId;
 
       // Join as second player
-      await request(app)
+      const joinResponse2 = await request(app)
         .post('/api/lobby/join')
         .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
+        .expect(200);
+
+      // Player 2 marks as ready
+      await request(app)
+        .post('/api/lobby/ready')
+        .send({ lobbyId, playerId: playerId2 })
         .expect(200);
 
       // Start game
@@ -93,6 +99,12 @@ describe('Game API', () => {
       await request(app)
         .post('/api/lobby/join')
         .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
+        .expect(200);
+
+      // Player 2 marks as ready
+      await request(app)
+        .post('/api/lobby/ready')
+        .send({ lobbyId, playerId: playerId2 })
         .expect(200);
 
       // Start game
@@ -197,6 +209,38 @@ describe('Game API', () => {
       expect(response.body.message).toContain('at least 2 players');
     });
 
+    it('should return 400 if not all players are ready', async () => {
+      // Create lobby with players
+      const createResponse = await request(app)
+        .post('/api/lobby/create')
+        .expect(201);
+
+      const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
+
+      const joinResponse1 = await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
+        .expect(200);
+
+      const leaderId = joinResponse1.body.playerId;
+
+      await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
+        .expect(200);
+
+      // Try to start game without player 2 being ready
+      const response = await request(app)
+        .post('/api/game/start')
+        .send({ lobbyId, playerId: leaderId })
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.message).toContain('Players are not ready');
+    });
+
     it('should return 409 if game already started', async () => {
       // Create lobby with players
       const createResponse = await request(app)
@@ -217,6 +261,12 @@ describe('Game API', () => {
       await request(app)
         .post('/api/lobby/join')
         .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
+        .expect(200);
+
+      // Player 2 marks as ready
+      await request(app)
+        .post('/api/lobby/ready')
+        .send({ lobbyId, playerId: playerId2 })
         .expect(200);
 
       // Start game once

@@ -143,6 +143,7 @@ export class GameService {
       myHand: playerState.hand,
       myFaceUp: playerState.faceUp,
       myFaceDownCount: playerState.faceDown.length,
+      myFaceDownPlayed: playerState.faceDown.map(card => card === null),
       otherPlayers,
       pile: game.pile,
       deckCount: game.deck.length,
@@ -175,7 +176,9 @@ export class GameService {
     }
 
     // Face-down cards are always playable (blind play)
-    return playerState.faceDown;
+    // Don't reveal actual cards - return empty array
+    // Client will handle facedown card selection by index
+    return [];
   }
 
   /**
@@ -239,12 +242,14 @@ export class GameService {
    * @param gameId - The game ID
    * @param playerId - The player ID
    * @param cards - The cards to play
+   * @param faceDownIndex - Index of facedown card to play (if playing facedown)
    * @returns Updated game state and metadata about the action
    */
   playCardsAction(
     gameId: string,
     playerId: PlayerId,
-    cards: Card[]
+    cards: Card[],
+    providedFaceDownIndex?: number
   ): { gameState: GameState; blowUp: boolean; winner: boolean } {
     const game = this.getGame(gameId);
     if (!game) {
@@ -264,12 +269,10 @@ export class GameService {
       source = 'hand';
     } else if (playerState.faceUp.length > 0) {
       source = 'faceUp';
-    } else if (playerState.faceDown.length > 0) {
+    } else if (!playerState.faceDown.every(card => card === null)) {
       source = 'faceDown';
-      // For face-down, find the index
-      faceDownIndex = playerState.faceDown.findIndex(
-        (c) => c.rank === cards[0].rank && c.suit === cards[0].suit
-      );
+      // Use provided index for facedown cards
+      faceDownIndex = providedFaceDownIndex;
     }
 
     const oldPileLength = game.pile.length;

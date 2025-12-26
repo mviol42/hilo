@@ -45,6 +45,7 @@ export interface PlayerView {
   myHand: Card[];
   myFaceUp: Card[];
   myFaceDownCount: number;
+  myFaceDownPlayed: boolean[]; // For each facedown slot: true if played, false if unplayed
   otherPlayers: {
     [playerId: string]: {
       handCount: number;

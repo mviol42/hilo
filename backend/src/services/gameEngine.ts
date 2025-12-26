@@ -271,7 +271,7 @@ export function checkBlowUp(pile: Card[]): boolean {
 export function hasNoCards(playerState: PlayerGameState): boolean {
   return playerState.hand.length === 0 &&
          playerState.faceUp.length === 0 &&
-         playerState.faceDown.length === 0;
+         playerState.faceDown.every(card => card === null);
 }
 
 export function drawCardsToHand(gameState: GameState, playerId: PlayerId): GameState {
@@ -408,7 +408,7 @@ export function playCards(
       throw new GameEngineError('Must play hand and face-up cards first');
     }
 
-    if (newPlayerState.faceDown.length === 0) {
+    if (newPlayerState.faceDown.every(card => card === null)) {
       throw new GameEngineError('No face-down cards');
     }
 
@@ -420,18 +420,22 @@ export function playCards(
       throw new GameEngineError('Face-down card index out of range');
     }
 
+    const card = newPlayerState.faceDown[faceDownIndex];
+
+    if (card === null) {
+      throw new GameEngineError('Face-down card already played');
+    }
+
     if (cards.length !== 1) {
       throw new GameEngineError('Can only play one face-down card at a time');
     }
 
-    const card = newPlayerState.faceDown[faceDownIndex];
-
     if (isCardPlayable(card, newState.pile)) {
-      newPlayerState.faceDown.splice(faceDownIndex, 1);
+      newPlayerState.faceDown[faceDownIndex] = null;
       newState.pile.push(card);
       newState.players.set(playerId, newPlayerState);
     } else {
-      newPlayerState.faceDown.splice(faceDownIndex, 1);
+      newPlayerState.faceDown[faceDownIndex] = null;
       newPlayerState.hand.push(card);
       newPlayerState.hand.push(...newState.pile);
       newState.pile = [];

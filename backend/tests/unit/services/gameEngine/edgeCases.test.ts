@@ -274,7 +274,8 @@ describe('Edge Cases and Advanced Scenarios', () => {
 
       const p1State = newGame.players.get('p1')!;
       expect(p1State.hand).toHaveLength(3);
-      expect(p1State.faceDown).toHaveLength(0);
+      expect(p1State.faceDown).toHaveLength(1);
+      expect(p1State.faceDown[0]).toBe(null);
       expect(newGame.pile).toHaveLength(0);
     });
 

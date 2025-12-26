@@ -15,5 +15,5 @@ export interface Player {
 export interface PlayerGameState {
   hand: import('./card').Card[];
   faceUp: import('./card').Card[];
-  faceDown: import('./card').Card[]; // Hidden from player
+  faceDown: (import('./card').Card | null)[]; // Hidden from player, null = played slot
 }

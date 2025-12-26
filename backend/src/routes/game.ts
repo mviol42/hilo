@@ -134,6 +134,13 @@ gameRouter.post('/start', (req: Request, res: Response) => {
         });
       }
 
+      if (error.message === 'Players are not ready') {
+        return res.status(400).json({
+          error: 'Bad request',
+          message: error.message,
+        });
+      }
+
       if (error.message === 'Game already started') {
         return res.status(409).json({
           error: 'Conflict',
@@ -267,7 +274,7 @@ gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
  */
 gameRouter.post('/play-cards', async (req: Request, res: Response) => {
   try {
-    const { gameId, playerId, cards } = req.body as PlayCardsRequest;
+    const { gameId, playerId, cards, faceDownIndex } = req.body as PlayCardsRequest;
 
     if (!gameId || !playerId || !cards || !Array.isArray(cards)) {
       return res.status(400).json({
@@ -277,7 +284,7 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
     }
 
     // Play the cards
-    const { gameState, blowUp, winner } = gameService.playCardsAction(gameId, playerId, cards);
+    const { gameState, blowUp, winner } = gameService.playCardsAction(gameId, playerId, cards, faceDownIndex);
 
     // Log action to Redis
     const action: 'play_cards' | 'blow_up' = blowUp ? 'blow_up' : 'play_cards';
