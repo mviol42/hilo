@@ -119,7 +119,7 @@ export function getPlayableRanks(cards: Card[], pile: Card[]): Rank[] {
   return Array.from(ranks);
 }
 
-export function initializeGame(playerIds: PlayerId[], roomId: string): GameState {
+export function initializeGame(playerIds: PlayerId[]): GameState {
   if (playerIds.length < 2) {
     throw new GameEngineError('Game requires at least 2 players');
   }
@@ -135,8 +135,8 @@ export function initializeGame(playerIds: PlayerId[], roomId: string): GameState
     });
   }
 
-  // Generate game ID with room ID prefix: <roomId>:game:<uuid>
-  const gameId = `${roomId}:game:${uuidv4()}`;
+  // Generate game ID
+  const gameId = uuidv4();
 
   return {
     id: gameId,

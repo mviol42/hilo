@@ -11,7 +11,7 @@ describe('Play Cards', () => {
 
   describe('playCards - Happy Path from Hand', () => {
     it('should play a single card from hand', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -32,7 +32,7 @@ describe('Play Cards', () => {
     });
 
     it('should play multiple cards of same rank', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -59,7 +59,7 @@ describe('Play Cards', () => {
     });
 
     it('should add cards to existing pile', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: '3', suit: 'spades' }];
@@ -78,7 +78,7 @@ describe('Play Cards', () => {
     });
 
     it('should move to next player after playing', () => {
-      const game = initializeGame(['p1', 'p2', 'p3'], testRoomId);
+      const game = initializeGame(['p1', 'p2', 'p3']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
 
@@ -94,7 +94,7 @@ describe('Play Cards', () => {
     });
 
     it('should draw cards after playing to maintain 3 in hand', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [
@@ -116,7 +116,7 @@ describe('Play Cards', () => {
     });
 
     it('should not draw if deck is empty', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -136,7 +136,7 @@ describe('Play Cards', () => {
 
   describe('playCards - Bonus Play from Face-Up', () => {
     it('should allow bonus play of same rank from face-up when hand becomes empty', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -162,7 +162,7 @@ describe('Play Cards', () => {
     });
 
     it('should not bonus play if hand still has cards', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -187,7 +187,7 @@ describe('Play Cards', () => {
 
   describe('playCards - From Face-Up', () => {
     it('should play from face-up when hand is empty', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -206,7 +206,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error if trying to play from face-up with cards in hand', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
 
@@ -221,7 +221,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error if no face-up cards available', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
 
@@ -238,7 +238,7 @@ describe('Play Cards', () => {
 
   describe('playCards - From Face-Down', () => {
     it('should play face-down card if playable', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -260,7 +260,7 @@ describe('Play Cards', () => {
     });
 
     it('should pickup pile if face-down card not playable', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -288,7 +288,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error if trying to play face-down with hand cards', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
 
@@ -303,7 +303,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error if trying to play face-down with face-up cards', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
 
@@ -318,7 +318,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error if face-down index out of range', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
 
@@ -333,7 +333,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error if no face-down index provided', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
 
@@ -350,7 +350,7 @@ describe('Play Cards', () => {
 
   describe('playCards - Error Cases', () => {
     it('should throw error if not player turn', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
 
@@ -365,7 +365,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error if playing zero cards', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
 
@@ -380,7 +380,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error if cards are different ranks', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
 
@@ -401,7 +401,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error if trying to play non-playable rank', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: 'K', suit: 'spades' }];
@@ -417,7 +417,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error when no cards are playable', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: '9', suit: 'clubs' }];
@@ -433,7 +433,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw "No Playable Card" if no cards can be played', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: '9', suit: 'clubs' }];
@@ -449,7 +449,7 @@ describe('Play Cards', () => {
     });
 
     it('should throw error if player not found', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p999';
 

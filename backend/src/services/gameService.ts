@@ -25,10 +25,10 @@ export class GameService {
    * @returns The initialized game state
    */
   async createGame(roomId: LobbyId, playerIds: PlayerId[]): Promise<GameState> {
-    const gameState = initializeGame(playerIds, roomId);
+    const gameState = initializeGame(playerIds);
     const dealtState = dealCards(gameState);
 
-    console.log(`[GameService] Creating game - roomId: ${roomId.substring(0, 8)}, gameId: ${dealtState.id}, match: ${dealtState.id === roomId}`);
+    console.log(`[GameService] Creating game - roomId: ${roomId.substring(0, 8)}, gameId: ${dealtState.id}`);
 
     // Save to Redis as source of truth
     await redisService.saveGameState(dealtState);
