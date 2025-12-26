@@ -380,7 +380,7 @@ describe('End-to-End Integration Tests', () => {
 
       // Import game service to manipulate game state for testing
       const { gameService } = await import('../../../backend/src/services/gameService');
-      const game = gameService.getGame(gameId);
+      const game = await gameService.getGame(gameId);
 
       expect(game).toBeDefined();
       if (!game) throw new Error('Game not found');

@@ -138,7 +138,7 @@ export class RedisService {
   }
 
   /**
-   * Get the Redis client instance (for creating KVObjectStore instances)
+   * Get the Redis client instance
    * @throws Error if client is not available
    */
   getClient(): RedisClientType {
