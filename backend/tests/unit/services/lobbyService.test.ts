@@ -145,7 +145,10 @@ describe('LobbyService', () => {
     it('should return true when leader with 2+ players', () => {
       const lobby = service.createLobby();
       const leader = service.joinLobby(lobby.id, uuidv4(), 'Alice');
-      service.joinLobby(lobby.id, uuidv4(), 'Bob');
+      const player2 = service.joinLobby(lobby.id, uuidv4(), 'Bob');
+
+      // Player 2 needs to be ready
+      service.readyPlayer(lobby.id, player2.id);
 
       expect(service.canStartGame(lobby.id, leader.id)).toBe(true);
     });

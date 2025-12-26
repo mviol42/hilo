@@ -72,6 +72,7 @@ export interface PlayCardsRequest {
   gameId: string;
   playerId: PlayerId;
   cards: Card[];
+  faceDownIndex?: number; // Index for playing facedown cards
 }
 
 export interface PlayCardsResponse {

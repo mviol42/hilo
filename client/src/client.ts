@@ -347,33 +347,74 @@ export class GameClient {
   }
 
   private async playCardsPhase(gameId: string, playerId: string, gameState: any): Promise<void> {
-    const availableCards = this.getAvailableCards(gameState);
+    // Check if playing from facedown cards
+    const isPlayingFaceDown = gameState.myHand.length === 0 && gameState.myFaceUp.length === 0;
 
-    if (availableCards.length === 0) {
-      this.ui.error('No cards available to play');
-      return;
-    }
+    if (isPlayingFaceDown) {
+      // Playing facedown cards - show unplayed slots
+      const unplayedIndices: number[] = [];
+      gameState.myFaceDownPlayed.forEach((isPlayed: boolean, index: number) => {
+        if (!isPlayed) {
+          unplayedIndices.push(index);
+        }
+      });
 
-    this.ui.info('Available cards:');
-    availableCards.forEach((card: Card, index: number) => {
-      console.log(`  ${index}: ${this.ui.formatCard(card)}`);
-    });
-
-    try {
-      const input = await this.input.question('\nSelect card(s) to play (indices separated by spaces)');
-      const indices = await this.input.parseCardIndices(input, availableCards.length);
-
-      if (indices.length === 0) {
-        this.ui.error('You must select at least one card');
+      if (unplayedIndices.length === 0) {
+        this.ui.error('No facedown cards available to play');
         return;
       }
 
-      const selectedCards = indices.map(i => availableCards[i]);
-      await this.api.playCards(gameId, playerId, selectedCards);
-      this.ui.success('Cards played!');
-    } catch (error) {
-      if (error instanceof Error) {
-        this.ui.error(error.message);
+      this.ui.info('Select a facedown card to play (blind):');
+      unplayedIndices.forEach((originalIndex: number) => {
+        console.log(`  ${originalIndex}: [?]`);
+      });
+
+      try {
+        const input = await this.input.question('\nSelect facedown card index');
+        const selectedIndex = parseInt(input.trim(), 10);
+
+        if (isNaN(selectedIndex) || !unplayedIndices.includes(selectedIndex)) {
+          this.ui.error('Invalid facedown card index');
+          return;
+        }
+
+        await this.api.playFaceDownCard(gameId, playerId, selectedIndex);
+        this.ui.success('Facedown card played!');
+      } catch (error) {
+        if (error instanceof Error) {
+          this.ui.error(error.message);
+        }
+      }
+    } else {
+      // Playing from hand or faceup
+      const availableCards = this.getAvailableCards(gameState);
+
+      if (availableCards.length === 0) {
+        this.ui.error('No cards available to play');
+        return;
+      }
+
+      this.ui.info('Available cards:');
+      availableCards.forEach((card: Card, index: number) => {
+        console.log(`  ${index}: ${this.ui.formatCard(card)}`);
+      });
+
+      try {
+        const input = await this.input.question('\nSelect card(s) to play (indices separated by spaces)');
+        const indices = await this.input.parseCardIndices(input, availableCards.length);
+
+        if (indices.length === 0) {
+          this.ui.error('You must select at least one card');
+          return;
+        }
+
+        const selectedCards = indices.map(i => availableCards[i]);
+        await this.api.playCards(gameId, playerId, selectedCards);
+        this.ui.success('Cards played!');
+      } catch (error) {
+        if (error instanceof Error) {
+          this.ui.error(error.message);
+        }
       }
     }
   }

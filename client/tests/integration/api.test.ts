@@ -9,12 +9,12 @@ import { createTestServer, closeTestServer, TestServer } from '../../../backend/
 describe('ApiClient Integration Tests', () => {
   let testServer: TestServer;
   let apiClient: ApiClient;
-  const testPort = 3001; // Use same port as backend tests
-  const baseURL = `http://localhost:${testPort}`;
+  let baseURL: string;
 
   beforeAll(async () => {
-    // Start test server
+    // Start test server with dynamic port
     testServer = await createTestServer();
+    baseURL = `http://localhost:${testServer.port}`;
 
     // Create API client
     apiClient = new ApiClient(baseURL);
@@ -101,7 +101,11 @@ describe('ApiClient Integration Tests', () => {
       // Join with two players
       const player1Response = await apiClient.joinLobby(lobbyId, 'Player1');
       const player1Id = player1Response.playerId;
-      await apiClient.joinLobby(lobbyId, 'Player2');
+      const player2Response = await apiClient.joinLobby(lobbyId, 'Player2');
+      const player2Id = player2Response.playerId;
+
+      // Player 2 marks ready (leader doesn't need to ready)
+      await apiClient.readyPlayer(lobbyId, player2Id);
 
       // Start game (only leader can start)
       const gameResponse = await apiClient.startGame(lobbyId, player1Id);

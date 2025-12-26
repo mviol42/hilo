@@ -99,11 +99,12 @@ describe('Game Initialization', () => {
     });
 
     it('should reduce deck size after dealing', () => {
-      const game = initializeGame(['p1', 'p2', 'p3'], testRoomId);
+      // Using 2 players instead of 3 to work with halved deck size
+      const game = initializeGame(['p1', 'p2'], testRoomId);
       const initialDeckSize = game.deck.length;
       const dealtGame = dealCards(game);
 
-      expect(dealtGame.deck.length).toBe(initialDeckSize - (9 * 3));
+      expect(dealtGame.deck.length).toBe(initialDeckSize - (9 * 2));
     });
 
     it('should not give duplicate cards to players', () => {

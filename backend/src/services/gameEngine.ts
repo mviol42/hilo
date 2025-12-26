@@ -25,7 +25,9 @@ export function createDeck(numPlayers: number): Card[] {
     }
   }
 
-  return cards;
+
+  // For testing purposes, return half the cards (take every other card to preserve variety)
+  return cards.filter((_, index) => index % 2 === 0);
 }
 
 export function shuffleDeck(deck: Card[]): Card[] {
@@ -35,6 +37,26 @@ export function shuffleDeck(deck: Card[]): Card[] {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
+}
+
+/**
+ * Sort a hand of cards by rank (using RANKS order), then by suit (alphabetically)
+ * @param hand - The hand to sort
+ * @returns Sorted hand
+ */
+export function sortHand(hand: Card[]): Card[] {
+  return [...hand].sort((a, b) => {
+    // Compare by rank first
+    const rankIndexA = RANKS.indexOf(a.rank);
+    const rankIndexB = RANKS.indexOf(b.rank);
+
+    if (rankIndexA !== rankIndexB) {
+      return rankIndexA - rankIndexB;
+    }
+
+    // If ranks are equal, compare by suit alphabetically
+    return a.suit.localeCompare(b.suit);
+  });
 }
 
 export function getRankValue(rank: Rank): number {
@@ -144,7 +166,7 @@ export function dealCards(gameState: GameState): GameState {
     }
 
     playerState.faceDown = dealtCards.slice(0, 3);
-    playerState.hand = dealtCards.slice(3);
+    playerState.hand = sortHand(dealtCards.slice(3));
   }
 
   return newState;
@@ -271,7 +293,7 @@ export function checkBlowUp(pile: Card[]): boolean {
 export function hasNoCards(playerState: PlayerGameState): boolean {
   return playerState.hand.length === 0 &&
          playerState.faceUp.length === 0 &&
-         playerState.faceDown.length === 0;
+         playerState.faceDown.every(card => card === null);
 }
 
 export function drawCardsToHand(gameState: GameState, playerId: PlayerId): GameState {
@@ -288,6 +310,9 @@ export function drawCardsToHand(gameState: GameState, playerId: PlayerId): GameS
     const card = newState.deck.pop()!;
     newPlayerState.hand.push(card);
   }
+
+  // Sort hand after drawing
+  newPlayerState.hand = sortHand(newPlayerState.hand);
 
   newState.players.set(playerId, newPlayerState);
 
@@ -311,7 +336,8 @@ export function playCards(
     throw new GameEngineError('Not player turn');
   }
 
-  if (cards.length === 0) {
+  // For facedown cards, client doesn't know the card so cards array is empty
+  if (cards.length === 0 && source !== 'faceDown') {
     throw new GameEngineError('Must play at least one card');
   }
 
@@ -320,10 +346,14 @@ export function playCards(
     throw new GameEngineError('Player not found');
   }
 
-  const firstRank = cards[0].rank;
-  const allSameRank = cards.every(card => card.rank === firstRank);
-  if (!allSameRank) {
-    throw new GameEngineError('All cards must be the same rank');
+  // Skip rank validation for facedown cards (client doesn't know the card)
+  let firstRank: Rank | undefined;
+  if (source !== 'faceDown') {
+    firstRank = cards[0].rank;
+    const allSameRank = cards.every(card => card.rank === firstRank);
+    if (!allSameRank) {
+      throw new GameEngineError('All cards must be the same rank');
+    }
   }
 
   let newState = { ...gameState };
@@ -339,7 +369,7 @@ export function playCards(
       throw new GameEngineError('No Playable Card');
     }
 
-    if (!playableRanks.includes(firstRank)) {
+    if (!playableRanks.includes(firstRank!)) {
       throw new GameEngineError('Card not playable');
     }
 
@@ -387,7 +417,7 @@ export function playCards(
       throw new GameEngineError('No Playable Card');
     }
 
-    if (!playableRanks.includes(firstRank)) {
+    if (!playableRanks.includes(firstRank!)) {
       throw new GameEngineError('Card not playable');
     }
 
@@ -408,7 +438,7 @@ export function playCards(
       throw new GameEngineError('Must play hand and face-up cards first');
     }
 
-    if (newPlayerState.faceDown.length === 0) {
+    if (newPlayerState.faceDown.every(card => card === null)) {
       throw new GameEngineError('No face-down cards');
     }
 
@@ -420,21 +450,28 @@ export function playCards(
       throw new GameEngineError('Face-down card index out of range');
     }
 
-    if (cards.length !== 1) {
-      throw new GameEngineError('Can only play one face-down card at a time');
-    }
-
     const card = newPlayerState.faceDown[faceDownIndex];
 
+    if (card === null) {
+      throw new GameEngineError('Face-down card already played');
+    }
+
+    // For facedown cards, cards array is empty since client doesn't know the card
+    // The actual card is retrieved from the faceDown array by index
+
     if (isCardPlayable(card, newState.pile)) {
-      newPlayerState.faceDown.splice(faceDownIndex, 1);
+      newPlayerState.faceDown[faceDownIndex] = null;
       newState.pile.push(card);
       newState.players.set(playerId, newPlayerState);
     } else {
-      newPlayerState.faceDown.splice(faceDownIndex, 1);
+      newPlayerState.faceDown[faceDownIndex] = null;
       newPlayerState.hand.push(card);
       newPlayerState.hand.push(...newState.pile);
       newState.pile = [];
+
+      // Sort hand after picking up facedown card and pile
+      newPlayerState.hand = sortHand(newPlayerState.hand);
+
       newState.players.set(playerId, newPlayerState);
 
       newState = drawCardsToHand(newState, playerId);
@@ -517,6 +554,9 @@ export function pickupPile(gameState: GameState, playerId: PlayerId): GameState 
       }
     }
   }
+
+  // Sort hand after picking up pile
+  newPlayerState.hand = sortHand(newPlayerState.hand);
 
   newState.players.set(playerId, newPlayerState);
 

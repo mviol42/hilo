@@ -253,7 +253,8 @@ describe('Play Cards', () => {
       const newGame = playCards(game, 'p1', [{ rank: '7', suit: 'hearts' }], 'faceDown', 0);
 
       const p1State = newGame.players.get('p1')!;
-      expect(p1State.faceDown).toHaveLength(0);
+      expect(p1State.faceDown).toHaveLength(1);
+      expect(p1State.faceDown[0]).toBe(null);
       expect(newGame.pile).toHaveLength(2);
       expect(newGame.pile[1].rank).toBe('7');
     });
@@ -279,7 +280,8 @@ describe('Play Cards', () => {
       const newGame = playCards(game, 'p1', [{ rank: '5', suit: 'hearts' }], 'faceDown', 0);
 
       const p1State = newGame.players.get('p1')!;
-      expect(p1State.faceDown).toHaveLength(0);
+      expect(p1State.faceDown).toHaveLength(1);
+      expect(p1State.faceDown[0]).toBe(null);
       expect(p1State.hand).toHaveLength(2);
       expect(newGame.pile).toHaveLength(0);
       expect(newGame.activePlayerId).toBe('p2');

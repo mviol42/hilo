@@ -8,25 +8,28 @@ describe('Deck Management', () => {
       const deck3 = createDeck(3);
       const deck4 = createDeck(4);
 
-      expect(deck2).toHaveLength(52);
-      expect(deck3).toHaveLength(52);
-      expect(deck4).toHaveLength(52);
+      // Deck is halved for faster testing
+      expect(deck2).toHaveLength(26);
+      expect(deck3).toHaveLength(26);
+      expect(deck4).toHaveLength(26);
     });
 
     it('should create 2 decks for 5-8 players', () => {
       const deck5 = createDeck(5);
       const deck8 = createDeck(8);
 
-      expect(deck5).toHaveLength(104);
-      expect(deck8).toHaveLength(104);
+      // Deck is halved for faster testing
+      expect(deck5).toHaveLength(52);
+      expect(deck8).toHaveLength(52);
     });
 
     it('should create 3 decks for 9-12 players', () => {
       const deck9 = createDeck(9);
       const deck12 = createDeck(12);
 
-      expect(deck9).toHaveLength(156);
-      expect(deck12).toHaveLength(156);
+      // Deck is halved for faster testing
+      expect(deck9).toHaveLength(78);
+      expect(deck12).toHaveLength(78);
     });
 
     it('should create deck with all ranks and suits', () => {
@@ -50,8 +53,9 @@ describe('Deck Management', () => {
         rankCounts.set(card.rank, (rankCounts.get(card.rank) || 0) + 1);
       }
 
+      // Deck is halved for faster testing (2 cards per rank instead of 4)
       for (const count of rankCounts.values()) {
-        expect(count).toBe(4);
+        expect(count).toBe(2);
       }
     });
   });

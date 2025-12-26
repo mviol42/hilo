@@ -54,6 +54,13 @@ export class UI {
     return cards.map(c => `[${this.formatCard(c)}]`).join(' ');
   }
 
+  formatFaceDownCards(playedStatus: boolean[]): string {
+    if (playedStatus.length === 0) return chalk.gray('(empty)');
+    return playedStatus.map(isPlayed =>
+      isPlayed ? chalk.gray('[✓]') : chalk.gray('[?]')
+    ).join(' ');
+  }
+
   showLobby(lobby: LobbyState, playerId: string): void {
     this.clear();
     this.header('Lobby');
@@ -93,7 +100,7 @@ export class UI {
     this.section('Your Cards');
     console.log(`Hand:        ${this.formatCards(gameState.myHand)}`);
     console.log(`Face-Up:     ${this.formatCards(gameState.myFaceUp)}`);
-    console.log(`Face-Down:   ${chalk.gray(`${gameState.myFaceDownCount} card(s)`)}`);
+    console.log(`Face-Down:   ${this.formatFaceDownCards(gameState.myFaceDownPlayed)}`);
     console.log();
 
     this.section('Table');
