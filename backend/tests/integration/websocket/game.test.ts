@@ -39,8 +39,8 @@ describe.skip('WebSocket Game Events (DISABLED - needs refactoring for HTTP-only
     sockets = [];
 
     // Clear lobbies and games
-    lobbyService.clearAll();
-    gameService.clearAll();
+    await lobbyService.clearAll();
+    await gameService.clearAll();
   });
 
   describe('Game Setup Phase', () => {
@@ -106,7 +106,7 @@ describe.skip('WebSocket Game Events (DISABLED - needs refactoring for HTTP-only
       sockets.push(socket1, socket2);
 
       // Get initial state
-      const game = gameService.getGame(gameId);
+      const game = await gameService.getGame(gameId);
       expect(game).toBeDefined();
 
       const player1State = game!.players.get(player1Id);
@@ -138,7 +138,7 @@ describe.skip('WebSocket Game Events (DISABLED - needs refactoring for HTTP-only
       sockets.push(socket1, socket2);
 
       // Get initial state
-      const game = gameService.getGame(gameId);
+      const game = await gameService.getGame(gameId);
       const player1State = game!.players.get(player1Id);
       const player2State = game!.players.get(player2Id);
 
@@ -167,7 +167,7 @@ describe.skip('WebSocket Game Events (DISABLED - needs refactoring for HTTP-only
       const turnChange = await turnChangePromise;
 
       // Verify the game is now in playing phase
-      const updatedGame = gameService.getGame(gameId);
+      const updatedGame = await gameService.getGame(gameId);
       expect(updatedGame!.phase).toBe('playing');
       expect(turnChange.activePlayerId).toBeDefined();
     });
@@ -181,7 +181,7 @@ describe.skip('WebSocket Game Events (DISABLED - needs refactoring for HTTP-only
       );
       sockets.push(socket1, socket2);
 
-      const game = gameService.getGame(gameId);
+      const game = await gameService.getGame(gameId);
       const activePlayerId = game!.activePlayerId;
       const activeSocket = activePlayerId === player1Id ? socket1 : socket2;
       const playerState = game!.players.get(activePlayerId);
@@ -222,7 +222,7 @@ describe.skip('WebSocket Game Events (DISABLED - needs refactoring for HTTP-only
       );
       sockets.push(socket1, socket2);
 
-      const game = gameService.getGame(gameId);
+      const game = await gameService.getGame(gameId);
       const activePlayerId = game!.activePlayerId;
       const nonActivePlayerId = activePlayerId === player1Id ? player2Id : player1Id;
       const nonActiveSocket = activePlayerId === player1Id ? socket2 : socket1;
@@ -245,7 +245,7 @@ describe.skip('WebSocket Game Events (DISABLED - needs refactoring for HTTP-only
       );
       sockets.push(socket1, socket2);
 
-      const game = gameService.getGame(gameId);
+      const game = await gameService.getGame(gameId);
       const activePlayerId = game!.activePlayerId;
       const activeSocket = activePlayerId === player1Id ? socket1 : socket2;
 
@@ -263,7 +263,7 @@ describe.skip('WebSocket Game Events (DISABLED - needs refactoring for HTTP-only
       }
 
       // Next player should be able to pick up if no playable cards
-      const updatedGame = gameService.getGame(gameId);
+      const updatedGame = await gameService.getGame(gameId);
       const newActivePlayerId = updatedGame!.activePlayerId;
       const newActiveSocket = newActivePlayerId === player1Id ? socket1 : socket2;
 
@@ -342,7 +342,7 @@ async function setupAndStartGame(testServer: TestServer) {
   );
 
   // Get game state
-  const game = gameService.getGame(gameId);
+  const game = await gameService.getGame(gameId);
   const player1State = game!.players.get(player1Id);
   const player2State = game!.players.get(player2Id);
 

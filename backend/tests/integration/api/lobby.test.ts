@@ -26,9 +26,9 @@ describe('Lobby API', () => {
     await closeTestServer(testServer);
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all lobbies before each test
-    lobbyService.clearAll();
+    await lobbyService.clearAll();
   });
 
   describe('POST /api/lobby/create', () => {
@@ -196,7 +196,7 @@ describe('Lobby API', () => {
         .expect(200);
 
       // Transition to game
-      lobbyService.transitionToGame(lobbyId);
+      await lobbyService.transitionToGame(lobbyId);
 
       // Try to join
       const response = await request(app)

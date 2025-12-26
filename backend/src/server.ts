@@ -50,7 +50,7 @@ export async function createServer() {
   app.use('/api/game', gameRouter);
 
   // Start lobby cleanup
-  lobbyService.startCleanup();
+  await lobbyService.startCleanup();
 
   // Error handling
   const { notFoundHandler, errorHandler } = await import('./middleware/errorHandler');

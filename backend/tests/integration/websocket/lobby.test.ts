@@ -38,7 +38,7 @@ describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-onl
     sockets = [];
 
     // Clear lobbies
-    lobbyService.clearAll();
+    await lobbyService.clearAll();
   });
 
   describe('Connection', () => {
@@ -348,7 +348,7 @@ describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-onl
       await new Promise((resolve) => setTimeout(resolve, 20));
 
       // Verify lobby is empty (deleted)
-      const lobby = lobbyService.getLobbyState(lobbyId);
+      const lobby = await lobbyService.getLobbyState(lobbyId);
       expect(lobby).toBeNull();
     });
 
