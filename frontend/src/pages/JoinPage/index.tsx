@@ -60,9 +60,21 @@ export function JoinPage() {
       const message = error.response?.data?.message
 
       if (status === 404) {
-        setJoinError('Lobby not found')
+        setJoinError('This lobby no longer exists.')
       } else if (status === 409) {
-        setJoinError(message || 'Cannot join lobby (game may have started)')
+        // Check if it's specifically about the game starting
+        if (message?.includes('already in game')) {
+          setJoinError('This game has already started. You cannot join an in-progress game.')
+        } else if (message?.includes('Player ID already exists')) {
+          // Player is already in the lobby, just redirect them
+          navigate(`/lobby?id=${lobbyId?.trim()}`)
+          return
+        } else {
+          setJoinError(message || 'Cannot join this lobby right now.')
+        }
+      } else if (!error.response) {
+        // Network error - no response received
+        setJoinError('Unable to connect to server. Please check your internet connection.')
       } else {
         setJoinError('Failed to join lobby. Please try again.')
       }

@@ -9,7 +9,7 @@ import { Server } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import { createTestServer, closeTestServer, TestServer } from '../setup';
 import { lobbyService } from '../../../src/services/lobbyService';
-import { CreateLobbyResponse, JoinLobbyResponse } from '@hilo/shared';
+import { CreateLobbyResponse, JoinLobbyResponse, LobbyStatusResponse } from '@hilo/shared';
 
 describe('Lobby API', () => {
   let testServer: TestServer;
@@ -206,6 +206,108 @@ describe('Lobby API', () => {
 
       expect(response.body).toHaveProperty('error');
       expect(response.body.message).toContain('already in game');
+    });
+  });
+
+  describe('GET /api/lobby/:id/status', () => {
+    it('should return exists: false for non-existent lobby', async () => {
+      const nonExistentId = uuidv4();
+
+      const response = await request(app)
+        .get(`/api/lobby/${nonExistentId}/status`)
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      const body = response.body as LobbyStatusResponse;
+      expect(body.exists).toBe(false);
+      expect(body.gameStarted).toBe(false);
+      expect(body.playerCount).toBe(0);
+    });
+
+    it('should return correct status for waiting lobby', async () => {
+      // Create lobby
+      const createResponse = await request(app)
+        .post('/api/lobby/create')
+        .expect(201);
+
+      const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
+
+      // Add two players
+      await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
+        .expect(200);
+
+      await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
+        .expect(200);
+
+      // Check status
+      const response = await request(app)
+        .get(`/api/lobby/${lobbyId}/status`)
+        .expect(200);
+
+      const body = response.body as LobbyStatusResponse;
+      expect(body.exists).toBe(true);
+      expect(body.gameStarted).toBe(false);
+      expect(body.playerCount).toBe(2);
+    });
+
+    it('should return gameStarted: true for lobby in game', async () => {
+      // Create lobby
+      const createResponse = await request(app)
+        .post('/api/lobby/create')
+        .expect(201);
+
+      const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
+
+      // Add players
+      await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
+        .expect(200);
+
+      await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
+        .expect(200);
+
+      // Transition to game
+      await lobbyService.transitionToGame(lobbyId);
+
+      // Check status
+      const response = await request(app)
+        .get(`/api/lobby/${lobbyId}/status`)
+        .expect(200);
+
+      const body = response.body as LobbyStatusResponse;
+      expect(body.exists).toBe(true);
+      expect(body.gameStarted).toBe(true);
+      expect(body.playerCount).toBe(2);
+    });
+
+    it('should return playerCount: 0 for empty lobby', async () => {
+      // Create lobby (no players yet)
+      const createResponse = await request(app)
+        .post('/api/lobby/create')
+        .expect(201);
+
+      const lobbyId = createResponse.body.lobbyId;
+
+      // Check status
+      const response = await request(app)
+        .get(`/api/lobby/${lobbyId}/status`)
+        .expect(200);
+
+      const body = response.body as LobbyStatusResponse;
+      expect(body.exists).toBe(true);
+      expect(body.gameStarted).toBe(false);
+      expect(body.playerCount).toBe(0);
     });
   });
 });

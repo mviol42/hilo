@@ -14,6 +14,7 @@ import {
   connectSocket,
   waitForEvent,
   cleanupSockets,
+  setTestPort,
   TestSocket,
 } from './helpers';
 import { lobbyService } from '../../../src/services/lobbyService';
@@ -21,12 +22,13 @@ import { gameService } from '../../../src/services/gameService';
 import request from 'supertest';
 import { Card } from '@hilo/shared';
 
-describe.skip('WebSocket Game Events (DISABLED - needs refactoring for HTTP-only mutations)', () => {
+describe.skip('WebSocket Game Events - TODO: Refactor to use HTTP API for mutations', () => {
   let testServer: TestServer;
   let sockets: TestSocket[] = [];
 
   beforeAll(async () => {
     testServer = await createTestServer();
+    setTestPort(testServer.port);
   });
 
   afterAll(async () => {
@@ -303,6 +305,12 @@ async function setupGame(testServer: TestServer) {
   await request(testServer.app)
     .post('/api/lobby/join')
     .send({ lobbyId, playerId: playerId2, playerName: 'Player 2' })
+    .expect(200);
+
+  // Mark player 2 as ready (player 1 is leader, doesn't need to be ready)
+  await request(testServer.app)
+    .post('/api/lobby/ready')
+    .send({ lobbyId, playerId: playerId2 })
     .expect(200);
 
   // Connect sockets

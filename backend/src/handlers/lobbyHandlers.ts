@@ -130,6 +130,10 @@ function handleLobbyLeave(_io: TypedServer, socket: TypedSocket) {
 
 /**
  * Handle socket disconnection
+ *
+ * Behavior depends on lobby state:
+ * - WAITING: Remove player from lobby (they can rejoin via join flow)
+ * - IN_GAME: Keep player in lobby so they can reconnect and rejoin the game
  */
 function handleDisconnect(io: TypedServer, socket: TypedSocket) {
   return async () => {
@@ -137,46 +141,55 @@ function handleDisconnect(io: TypedServer, socket: TypedSocket) {
       const socketData = socket.data as SocketData;
       const { playerId, lobbyId } = socketData;
 
-      // If player was in a lobby/room, handle leave
-      if (playerId && lobbyId) {
-        const roomId = lobbyId; // lobbyId serves as the permanent room ID
-        const lobbyBefore = await lobbyService.getLobby(lobbyId);
-        if (!lobbyBefore) {
-          return; // Lobby already gone
-        }
+      if (!playerId || !lobbyId) {
+        return;
+      }
 
-        const wasLeader = lobbyBefore.leaderId === playerId;
-        const oldLeaderId = lobbyBefore.leaderId;
+      const lobby = await lobbyService.getLobby(lobbyId);
+      if (!lobby) {
+        return; // Lobby already gone
+      }
 
-        // Leave the lobby
-        await lobbyService.leaveLobby(lobbyId, playerId);
+      console.log(`[LobbyHandlers] Player ${playerId.substring(0, 8)} disconnected from lobby ${lobbyId.substring(0, 8)}, status: ${lobby.status}`);
 
-        // Clear session from Redis
-        redisService.clearPlayerSession(playerId).catch((err) => {
-          console.error('[LobbyHandlers] Failed to clear session on disconnect:', err);
+      // If game is in progress, keep the player so they can reconnect
+      if (lobby.status === 'in_game') {
+        console.log(`[LobbyHandlers] Game in progress, keeping player for potential rejoin`);
+        return;
+      }
+
+      // If in waiting/lobby state, remove the player
+      const roomId = lobbyId;
+      const wasLeader = lobby.leaderId === playerId;
+      const oldLeaderId = lobby.leaderId;
+
+      // Leave the lobby
+      await lobbyService.leaveLobby(lobbyId, playerId);
+
+      // Clear session from Redis
+      redisService.clearPlayerSession(playerId).catch((err) => {
+        console.error('[LobbyHandlers] Failed to clear session on disconnect:', err);
+      });
+
+      // Get updated lobby state
+      const lobbyAfter = await lobbyService.getLobbyState(lobbyId);
+
+      if (lobbyAfter) {
+        // Notify remaining players in room
+        io.to(roomId).emit('lobby:playerLeft', {
+          playerId,
+          lobby: lobbyAfter,
         });
 
-        // Get updated lobby state
-        const lobbyAfter = await lobbyService.getLobbyState(lobbyId);
-
-        if (lobbyAfter) {
-          // Notify remaining players in room
-          io.to(roomId).emit('lobby:playerLeft', {
-            playerId,
+        // If leader changed, notify players
+        if (wasLeader && lobbyAfter.leaderId !== oldLeaderId) {
+          io.to(roomId).emit('lobby:leaderChanged', {
+            newLeaderId: lobbyAfter.leaderId,
             lobby: lobbyAfter,
           });
-
-          // If leader changed, notify players
-          if (wasLeader && lobbyAfter.leaderId !== oldLeaderId) {
-            io.to(roomId).emit('lobby:leaderChanged', {
-              newLeaderId: lobbyAfter.leaderId,
-              lobby: lobbyAfter,
-            });
-          }
         }
       }
     } catch (error) {
-      // Log error but don't emit to disconnected socket
       console.error('Error handling disconnect:', error);
     }
   };

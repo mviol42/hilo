@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
 import { usePlayer, useLobby, useUI, useGame } from '@/context'
-import { Button, Input, PlayerList } from '@/components'
+import { Button, Input, PlayerList, LoadingSpinner } from '@/components'
 import { copyToClipboard, getLobbyShareLink } from '@/utils/url'
 import type { DeckStrategy } from '@hilo/shared';
 
@@ -26,13 +26,57 @@ export function LobbyPage() {
   const [nameInput, setNameInput] = useState(playerName || '')
   const [isReady, setIsReady] = useState(false)
   const [deckStrategy, setDeckStrategy] = useState<DeckStrategy>('standard')
+  const [isCheckingLobby, setIsCheckingLobby] = useState(true)
+  const [lobbyError, setLobbyError] = useState<string | null>(null)
 
-  // Redirect to landing if no lobby ID
-  useEffect(() => {
+  // Check if user is in the lobby, redirect if not
+  const checkLobbyAccess = useCallback(async () => {
     if (!lobbyId) {
       navigate('/')
+      return
     }
-  }, [lobbyId, navigate])
+
+    // If we already have lobby state for this lobby, we're good
+    if (lobby && lobby.id === lobbyId) {
+      // Verify the current player is in the lobby
+      const isInLobby = lobby.players.some(p => p.id === playerId)
+      if (isInLobby) {
+        setIsCheckingLobby(false)
+        return
+      }
+    }
+
+    // Check lobby status before trying to join
+    try {
+      const status = await apiClient.getLobbyStatus(lobbyId)
+
+      if (!status.exists) {
+        setLobbyError('This lobby no longer exists.')
+        setIsCheckingLobby(false)
+        setTimeout(() => navigate('/'), 2000)
+        return
+      }
+
+      if (status.gameStarted) {
+        setLobbyError('This game has already started.')
+        setIsCheckingLobby(false)
+        setTimeout(() => navigate('/'), 2000)
+        return
+      }
+
+      // Lobby exists and game hasn't started - redirect to join page
+      navigate(`/join?id=${lobbyId}`)
+    } catch (error) {
+      console.error('Failed to check lobby status:', error)
+      setLobbyError('Failed to connect. Please try again.')
+      setIsCheckingLobby(false)
+    }
+  }, [lobbyId, lobby, playerId, navigate])
+
+  // Check lobby access on mount
+  useEffect(() => {
+    checkLobbyAccess()
+  }, [checkLobbyAccess])
 
   // Set up WebSocket listener for game starting
   useEffect(() => {
@@ -163,6 +207,30 @@ export function LobbyPage() {
 
   if (!lobbyId) {
     return null
+  }
+
+  // Show loading state while checking lobby access
+  if (isCheckingLobby) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <LoadingSpinner />
+          <p className="mt-4 text-gray-600">Checking lobby status...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (lobbyError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <p className="text-red-600 text-lg font-medium">{lobbyError}</p>
+          <p className="mt-2 text-gray-600">Redirecting to home...</p>
+        </div>
+      </div>
+    )
   }
 
   // Check if all non-leader players are ready
