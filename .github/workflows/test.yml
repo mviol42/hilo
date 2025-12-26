@@ -27,12 +27,12 @@ jobs:
 
     - name: Install dependencies (client)
       run: cd client && npm ci
+    
+    - name: Build (shared)
+      run: cd shared && npm run build
 
-    - name: Build
-      run: npm run build
+    - name: Build (backend) + Test
+      run: cd backend && npm build && npm run test:all
 
-    - name: Run backend unit tests
-      run: cd backend && npm run test:all
-
-    - name: Run client tests
-      run: cd client && npm test
+    - name: Build (client) + Test
+      run: cd client && npm build && npm run test
