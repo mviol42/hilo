@@ -165,7 +165,7 @@ describe('End-to-End Integration Tests', () => {
 
       // Verify game started
       expect(gameStartEvent1.gameId).toBeDefined();
-      expect(gameStartEvent1.gameId).toMatch(new RegExp(`^${lobbyId}:game:`));
+      expect(gameStartEvent1.gameId).toMatch(/^[a-f0-9-]{36}$/);
 
       // Verify game state received
       expect(gameStateEvent1.gameState).toBeDefined();
@@ -179,7 +179,7 @@ describe('End-to-End Integration Tests', () => {
       socket2.disconnect();
     });
 
-    it('should verify game ID has correct format with room prefix', async () => {
+    it('should verify game ID has correct UUID format', async () => {
       const apiClient = new ApiClient(baseURL);
 
       // Create lobby with two players
@@ -197,12 +197,8 @@ describe('End-to-End Integration Tests', () => {
       // Start game
       const gameResponse = await apiClient.startGame(lobbyId, player1Id);
 
-      // Verify game ID format: <roomId>:game:<uuid>
-      expect(gameResponse.gameState.id).toMatch(new RegExp(`^${lobbyId}:game:[a-f0-9-]+$`));
-
-      // Verify the room ID prefix matches the lobby ID
-      const gameIdParts = gameResponse.gameState.id.split(':game:');
-      expect(gameIdParts[0]).toBe(lobbyId);
+      // Verify game ID format is a valid UUID
+      expect(gameResponse.gameState.id).toMatch(/^[a-f0-9-]{36}$/);
     });
   });
 

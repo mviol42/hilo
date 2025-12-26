@@ -11,7 +11,7 @@ describe('Pickup Pile', () => {
 
   describe('pickupPile - From Hand', () => {
     it('should pickup pile when no cards in hand are playable', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [
@@ -33,7 +33,7 @@ describe('Pickup Pile', () => {
     });
 
     it('should move to next player after picking up', () => {
-      const game = initializeGame(['p1', 'p2', 'p3'], testRoomId);
+      const game = initializeGame(['p1', 'p2', 'p3']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: 'K', suit: 'spades' }];
@@ -50,7 +50,7 @@ describe('Pickup Pile', () => {
     });
 
     it('should throw error if playable cards exist in hand', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: '5', suit: 'clubs' }];
@@ -68,7 +68,7 @@ describe('Pickup Pile', () => {
 
   describe('pickupPile - From Face-Up', () => {
     it('should pickup pile and add same-rank face-up cards when hand is empty', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: 'K', suit: 'spades' }];
@@ -93,7 +93,7 @@ describe('Pickup Pile', () => {
     });
 
     it('should add all same-rank face-up cards to hand', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: 'K', suit: 'spades' }];
@@ -116,7 +116,7 @@ describe('Pickup Pile', () => {
     });
 
     it('should throw error if playable face-up cards exist', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: '5', suit: 'clubs' }];
@@ -134,7 +134,7 @@ describe('Pickup Pile', () => {
 
   describe('pickupPile - Error Cases', () => {
     it('should throw error if not player turn', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: 'K', suit: 'spades' }];
@@ -150,7 +150,7 @@ describe('Pickup Pile', () => {
     });
 
     it('should throw error when playing face-down cards', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: 'K', suit: 'spades' }];
@@ -166,7 +166,7 @@ describe('Pickup Pile', () => {
     });
 
     it('should throw error if player not found', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p999';
 
@@ -177,7 +177,7 @@ describe('Pickup Pile', () => {
 
   describe('pickupPile - Empty Pile', () => {
     it('should handle empty pile correctly', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [];
