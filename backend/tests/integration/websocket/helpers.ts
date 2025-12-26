@@ -12,11 +12,21 @@ import { TEST_PORT } from '../setup';
 
 export type TestSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+// Store the current test server port
+let currentTestPort = TEST_PORT;
+
+/**
+ * Set the port for socket connections (called by tests with their server port)
+ */
+export function setTestPort(port: number): void {
+  currentTestPort = port;
+}
+
 /**
  * Create a Socket.IO client connection
  */
-export function createSocketClient(): TestSocket {
-  const socket = ioClient(`http://localhost:${TEST_PORT}`, {
+export function createSocketClient(port?: number): TestSocket {
+  const socket = ioClient(`http://localhost:${port || currentTestPort}`, {
     transports: ['websocket'],
     autoConnect: false,
   });

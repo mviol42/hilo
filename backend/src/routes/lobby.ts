@@ -11,6 +11,7 @@ import {
   JoinLobbyResponse,
   LeaveLobbyRequest,
   LeaveLobbyResponse,
+  LobbyStatusResponse,
   ReadyLobbyRequest,
   ReadyLobbyResponse,
   ClientToServerEvents,
@@ -48,6 +49,40 @@ lobbyRouter.post('/create', async (req: Request, res: Response) => {
     };
 
     res.status(201).json(response);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * GET /api/lobby/:id/status
+ * Check lobby status (exists, game started, player count)
+ * Used by frontend to check if a lobby is joinable before attempting to join
+ */
+lobbyRouter.get('/:id/status', async (req: Request, res: Response) => {
+  try {
+    const lobbyId = req.params.id;
+    const lobby = await lobbyService.getLobby(lobbyId);
+
+    if (!lobby) {
+      const response: LobbyStatusResponse = {
+        exists: false,
+        gameStarted: false,
+        playerCount: 0,
+      };
+      return res.status(200).json(response);
+    }
+
+    const response: LobbyStatusResponse = {
+      exists: true,
+      gameStarted: lobby.status === 'in_game',
+      playerCount: lobby.players.size,
+    };
+
+    res.status(200).json(response);
   } catch (error) {
     res.status(500).json({
       error: 'Internal server error',

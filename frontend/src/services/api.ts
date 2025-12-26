@@ -4,6 +4,7 @@ import type {
   CreateLobbyResponse,
   JoinLobbyRequest,
   JoinLobbyResponse,
+  LobbyStatusResponse,
   ReadyLobbyRequest,
   ReadyLobbyResponse,
   LeaveLobbyRequest,
@@ -46,6 +47,11 @@ class ApiClient {
 
   async createLobby(): Promise<CreateLobbyResponse> {
     const response = await this.client.post<CreateLobbyResponse>('/api/lobby/create')
+    return response.data
+  }
+
+  async getLobbyStatus(lobbyId: string): Promise<LobbyStatusResponse> {
+    const response = await this.client.get<LobbyStatusResponse>(`/api/lobby/${lobbyId}/status`)
     return response.data
   }
 

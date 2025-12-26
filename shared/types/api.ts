@@ -9,6 +9,12 @@ import { Card, DeckStrategy } from './card';
 
 // Lobby endpoints
 
+export interface LobbyStatusResponse {
+  exists: boolean;
+  gameStarted: boolean;
+  playerCount: number;
+}
+
 export interface CreateLobbyResponse {
   lobbyId: LobbyId;
 }
