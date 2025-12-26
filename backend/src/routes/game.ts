@@ -37,7 +37,7 @@ export const gameRouter = Router();
  */
 gameRouter.post('/start', async (req: Request, res: Response) => {
   try {
-    const { lobbyId, playerId } = req.body as StartGameRequest;
+    const { lobbyId, playerId, deckStrategy } = req.body as StartGameRequest;
 
     if (!lobbyId || !playerId) {
       return res.status(400).json({
@@ -64,9 +64,9 @@ gameRouter.post('/start', async (req: Request, res: Response) => {
     // Create game with players from lobby
     // lobbyId serves as the permanent room ID for Socket.IO
     const playerIds = Array.from(lobby.players.keys());
-    console.log(`[GameRoutes] Starting game for lobby ${lobbyId.substring(0, 8)}, players: ${playerIds.map(p => p.substring(0, 8)).join(', ')}`);
+    console.log(`[GameRoutes] Starting game for lobby ${lobbyId.substring(0, 8)}, players: ${playerIds.map(p => p.substring(0, 8)).join(', ')}, strategy: ${deckStrategy || 'standard'}`);
 
-    const gameState = await gameService.createGame(lobbyId, playerIds);
+    const gameState = await gameService.createGame(lobbyId, playerIds, deckStrategy);
     console.log(`[GameRoutes] Game created with ID: ${gameState.id.substring(0, 8)}, gameId === lobbyId: ${gameState.id === lobbyId}`);
 
     // Return game state for the requesting player

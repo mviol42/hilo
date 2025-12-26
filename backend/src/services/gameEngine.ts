@@ -1,4 +1,4 @@
-import { Card, Rank, Suit, RANK_ORDER, SPECIAL_RANKS } from '@hilo/shared';
+import { Card, Rank, Suit, RANK_ORDER, SPECIAL_RANKS, DeckStrategy } from '@hilo/shared';
 import { GameState, GamePhase } from '@hilo/shared';
 import { PlayerId, PlayerGameState } from '@hilo/shared';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,7 +13,7 @@ export class GameEngineError extends Error {
   }
 }
 
-export function createDeck(numPlayers: number): Card[] {
+export function createDeck(numPlayers: number, strategy: DeckStrategy = 'standard'): Card[] {
   const numDecks = Math.ceil(numPlayers / 4);
   const cards: Card[] = [];
 
@@ -25,9 +25,26 @@ export function createDeck(numPlayers: number): Card[] {
     }
   }
 
+  // Apply deck strategy
+  switch (strategy) {
+    case 'quick':
+      // Half the standard cards (take every other card to preserve variety)
+      return cards.filter((_, index) => index % 2 === 0);
 
-  // For testing purposes, return half the cards (take every other card to preserve variety)
-  return cards.filter((_, index) => index % 2 === 0);
+    case 'mega-explosion':
+      // Standard cards + 1 extra 10 of each suit per deck
+      for (let d = 0; d < numDecks; d++) {
+        for (const suit of SUITS) {
+          cards.push({ rank: '10', suit });
+        }
+      }
+      return cards;
+
+    case 'standard':
+    default:
+      // Full standard deck
+      return cards;
+  }
 }
 
 export function shuffleDeck(deck: Card[]): Card[] {
@@ -119,12 +136,12 @@ export function getPlayableRanks(cards: Card[], pile: Card[]): Rank[] {
   return Array.from(ranks);
 }
 
-export function initializeGame(playerIds: PlayerId[]): GameState {
+export function initializeGame(playerIds: PlayerId[], deckStrategy: DeckStrategy = 'standard'): GameState {
   if (playerIds.length < 2) {
     throw new GameEngineError('Game requires at least 2 players');
   }
 
-  const deck = shuffleDeck(createDeck(playerIds.length));
+  const deck = shuffleDeck(createDeck(playerIds.length, deckStrategy));
   const players = new Map<PlayerId, PlayerGameState>();
 
   for (const playerId of playerIds) {

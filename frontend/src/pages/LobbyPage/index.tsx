@@ -5,6 +5,13 @@ import { socketManager } from '@/services/socket'
 import { usePlayer, useLobby, useUI, useGame } from '@/context'
 import { Button, Input, PlayerList } from '@/components'
 import { copyToClipboard, getLobbyShareLink } from '@/utils/url'
+import type { DeckStrategy } from '@hilo/shared';
+
+const DECK_STRATEGY_LABELS: Record<DeckStrategy, string> = {
+  'standard': 'Standard',
+  'quick': 'Quick',
+  'mega-explosion': 'Mega Explosion'
+};
 
 export function LobbyPage() {
   const navigate = useNavigate()
@@ -18,6 +25,7 @@ export function LobbyPage() {
 
   const [nameInput, setNameInput] = useState(playerName || '')
   const [isReady, setIsReady] = useState(false)
+  const [deckStrategy, setDeckStrategy] = useState<DeckStrategy>('standard')
 
   // Redirect to landing if no lobby ID
   useEffect(() => {
@@ -105,6 +113,7 @@ export function LobbyPage() {
       const response = await apiClient.startGame({
         lobbyId,
         playerId,
+        deckStrategy,
       })
 
       console.log('[LobbyPage] Game started successfully, gameState.id:', response.gameState.id?.substring(0, 20), 'navigating to:', `/game?id=${response.gameState.id}`)
@@ -224,6 +233,27 @@ export function LobbyPage() {
           <div className="space-y-4">
             {isLeader(playerId) ? (
               <>
+                {/* Deck Strategy Selector */}
+                <div>
+                  <label htmlFor="deck-strategy" className="block text-sm font-medium text-gray-700 mb-2">
+                    Deck Strategy
+                  </label>
+                  <select
+                    id="deck-strategy"
+                    value={deckStrategy}
+                    onChange={(e) => setDeckStrategy(e.target.value as DeckStrategy)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
+                  >
+                    <option value="standard">{DECK_STRATEGY_LABELS['standard']}</option>
+                    <option value="quick">{DECK_STRATEGY_LABELS['quick']}</option>
+                    <option value="mega-explosion">{DECK_STRATEGY_LABELS['mega-explosion']}</option>
+                  </select>
+                  <p className="text-gray-500 text-xs mt-1">
+                    {deckStrategy === 'standard' && 'Full deck with 52 cards per deck'}
+                    {deckStrategy === 'quick' && 'Half the standard cards for faster games'}
+                    {deckStrategy === 'mega-explosion' && 'Standard deck + 1 extra 10 of each suit'}
+                  </p>
+                </div>
                 <Button
                   onClick={handleStartGame}
                   variant="primary"

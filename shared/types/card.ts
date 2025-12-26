@@ -29,3 +29,14 @@ export const SPECIAL_RANKS = {
   INVISIBLE: '8' as Rank,  // Ignored in rank comparisons
   BLOW_UP: '10' as Rank,   // Removes pile
 } as const;
+
+/**
+ * Deck creation strategies
+ */
+export type DeckStrategy = 'standard' | 'quick' | 'mega-explosion';
+
+export const DECK_STRATEGY_LABELS: Record<DeckStrategy, string> = {
+  'standard': 'Standard',
+  'quick': 'Quick',
+  'mega-explosion': 'Mega Explosion'
+};

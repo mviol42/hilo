@@ -4,7 +4,7 @@
 
 import { GameState, PlayerView } from '@hilo/shared';
 import { PlayerId } from '@hilo/shared';
-import { Card } from '@hilo/shared';
+import { Card, DeckStrategy } from '@hilo/shared';
 import {
   initializeGame,
   dealCards,
@@ -22,13 +22,14 @@ export class GameService {
    * Create a new game in a room
    * @param roomId - The room ID (lobbyId from HTTP API serves as room ID)
    * @param playerIds - Array of player IDs in turn order
+   * @param deckStrategy - The deck strategy to use (defaults to 'standard')
    * @returns The initialized game state
    */
-  async createGame(roomId: LobbyId, playerIds: PlayerId[]): Promise<GameState> {
-    const gameState = initializeGame(playerIds);
+  async createGame(roomId: LobbyId, playerIds: PlayerId[], deckStrategy: DeckStrategy = 'standard'): Promise<GameState> {
+    const gameState = initializeGame(playerIds, deckStrategy);
     const dealtState = dealCards(gameState);
 
-    console.log(`[GameService] Creating game - roomId: ${roomId.substring(0, 8)}, gameId: ${dealtState.id}`);
+    console.log(`[GameService] Creating game - roomId: ${roomId.substring(0, 8)}, gameId: ${dealtState.id}, strategy: ${deckStrategy}`);
 
     // Save to Redis as source of truth
     await redisService.saveGameState(dealtState);
