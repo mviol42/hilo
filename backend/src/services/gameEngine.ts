@@ -39,6 +39,26 @@ export function shuffleDeck(deck: Card[]): Card[] {
   return shuffled;
 }
 
+/**
+ * Sort a hand of cards by rank (using RANKS order), then by suit (alphabetically)
+ * @param hand - The hand to sort
+ * @returns Sorted hand
+ */
+export function sortHand(hand: Card[]): Card[] {
+  return [...hand].sort((a, b) => {
+    // Compare by rank first
+    const rankIndexA = RANKS.indexOf(a.rank);
+    const rankIndexB = RANKS.indexOf(b.rank);
+
+    if (rankIndexA !== rankIndexB) {
+      return rankIndexA - rankIndexB;
+    }
+
+    // If ranks are equal, compare by suit alphabetically
+    return a.suit.localeCompare(b.suit);
+  });
+}
+
 export function getRankValue(rank: Rank): number {
   const index = RANK_ORDER.indexOf(rank);
   if (index === -1) {
@@ -146,7 +166,7 @@ export function dealCards(gameState: GameState): GameState {
     }
 
     playerState.faceDown = dealtCards.slice(0, 3);
-    playerState.hand = dealtCards.slice(3);
+    playerState.hand = sortHand(dealtCards.slice(3));
   }
 
   return newState;
@@ -290,6 +310,9 @@ export function drawCardsToHand(gameState: GameState, playerId: PlayerId): GameS
     const card = newState.deck.pop()!;
     newPlayerState.hand.push(card);
   }
+
+  // Sort hand after drawing
+  newPlayerState.hand = sortHand(newPlayerState.hand);
 
   newState.players.set(playerId, newPlayerState);
 
@@ -445,6 +468,10 @@ export function playCards(
       newPlayerState.hand.push(card);
       newPlayerState.hand.push(...newState.pile);
       newState.pile = [];
+
+      // Sort hand after picking up facedown card and pile
+      newPlayerState.hand = sortHand(newPlayerState.hand);
+
       newState.players.set(playerId, newPlayerState);
 
       newState = drawCardsToHand(newState, playerId);
@@ -527,6 +554,9 @@ export function pickupPile(gameState: GameState, playerId: PlayerId): GameState 
       }
     }
   }
+
+  // Sort hand after picking up pile
+  newPlayerState.hand = sortHand(newPlayerState.hand);
 
   newState.players.set(playerId, newPlayerState);
 
