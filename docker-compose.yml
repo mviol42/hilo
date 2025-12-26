@@ -3,6 +3,7 @@ version: '3.8'
 services:
   redis:
     image: redis:7-alpine
+    platform: linux/amd64
     container_name: hilo-redis
     restart: unless-stopped
     ports:
@@ -24,10 +25,10 @@ services:
       - hilo-network
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      network: host
+    # Using pre-built image from Docker Hub
+    # Set DOCKER_USER env var or it will detect from logged-in user
+    image: ${DOCKER_USER}/hilo-app:latest
+    platform: linux/amd64
     container_name: hilo-app
     restart: unless-stopped
     ports:

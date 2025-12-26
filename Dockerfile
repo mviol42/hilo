@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for Hi-Lo game server
 # Stage 1: Build all TypeScript code
-FROM node:20-alpine AS builder
+FROM --platform=linux/amd64 node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -33,10 +33,14 @@ WORKDIR /app/frontend
 RUN npm run build
 
 # Stage 2: Production runtime
-FROM node:20-alpine AS production
+FROM --platform=linux/amd64 node:20-alpine AS production
 
 # Install wget for health checks
 RUN apk add --no-cache wget
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
 # Configure npm for better network resilience
 RUN npm config set fetch-retry-mintimeout 20000 && \
@@ -61,8 +65,14 @@ COPY --from=builder /app/shared/dist ./shared/dist
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/frontend/dist ./frontend/dist
 
-# Copy shared package.json (needed for runtime)
+# Copy shared package.json (needed for runime)
 COPY --from=builder /app/shared/package.json ./shared/
+
+# Change ownership to non-root user
+RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
 
 # Set environment variables
 ENV NODE_ENV=production

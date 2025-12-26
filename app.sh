@@ -16,6 +16,12 @@ NC='\033[0m' # No Color
 export REDIS_DATA_PATH="${REDIS_DATA_PATH:-/var/usr/hilo}"
 export REDIS_PORT="${REDIS_PORT:-6380}"
 
+# Auto-detect Docker Hub username if not set
+if [ -z "$DOCKER_USER" ]; then
+  DOCKER_USER=$(docker info 2>/dev/null | grep "Username:" | awk '{print $2}')
+fi
+export DOCKER_USER
+
 # Check if docker-compose is available
 check_docker_compose() {
   if command -v docker-compose &> /dev/null; then
@@ -131,6 +137,52 @@ case "$COMMAND" in
     echo -e "${GREEN}Pull complete${NC}"
     ;;
 
+  push)
+    check_docker_compose
+
+    if [ -z "$DOCKER_USER" ]; then
+      echo -e "${RED}Error: No Docker user logged in${NC}"
+      echo "Please run: docker login"
+      exit 1
+    fi
+
+    # Get version from package.json
+    VERSION=$(grep '"version"' package.json | head -1 | awk -F: '{print $2}' | sed 's/[", ]//g')
+
+    IMAGE_NAME="hilo-app"
+    LATEST_TAG="${DOCKER_USER}/${IMAGE_NAME}:latest"
+    VERSION_TAG="${DOCKER_USER}/${IMAGE_NAME}:${VERSION}"
+
+    echo -e "${YELLOW}Building image...${NC}"
+    docker build \
+      --platform linux/amd64 \
+      -t "${DOCKER_USER}/hilo-app:build" \
+      .
+
+    SOURCE_IMAGE="${DOCKER_USER}/hilo-app:build"
+
+    echo -e "${YELLOW}Tagging image as ${LATEST_TAG}${NC}"
+    docker tag "$SOURCE_IMAGE" "$LATEST_TAG"
+
+    echo -e "${YELLOW}Tagging image as ${VERSION_TAG}${NC}"
+    docker tag "$SOURCE_IMAGE" "$VERSION_TAG"
+
+    echo -e "${YELLOW}Pushing ${LATEST_TAG}...${NC}"
+    docker push "$LATEST_TAG"
+
+    echo -e "${YELLOW}Pushing ${VERSION_TAG}...${NC}"
+    docker push "$VERSION_TAG"
+
+    echo ""
+    echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║${NC}  Push Complete!                      ${GREEN}║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
+    echo -e "${BLUE}Images pushed:${NC}"
+    echo -e "  - ${LATEST_TAG}"
+    echo -e "  - ${VERSION_TAG}"
+    echo ""
+    ;;
+
   help|--help|-h)
     print_banner
     echo "Usage: $0 [COMMAND] [OPTIONS]"
@@ -145,6 +197,7 @@ case "$COMMAND" in
     echo "  exec <svc>   - Execute command in service (e.g., exec app ls)"
     echo "  shell [svc]  - Open shell in service (default: app)"
     echo "  pull         - Pull latest base images"
+    echo "  push         - Build, tag, and push image to Docker Hub"
     echo "  clean        - Remove containers, volumes, and images"
     echo "  help         - Show this help message"
     echo ""
@@ -157,6 +210,7 @@ case "$COMMAND" in
     echo "  $0 logs app              # Follow application logs"
     echo "  $0 exec app npm test     # Run tests in app container"
     echo "  $0 shell redis           # Open shell in Redis container"
+    echo "  $0 push                  # Build and push to Docker Hub"
     echo "  REDIS_PORT=6500 $0 up    # Start with custom Redis port"
     echo ""
     ;;
