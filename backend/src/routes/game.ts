@@ -284,19 +284,19 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
     }
 
     // Play the cards
-    const { gameState, blowUp, winner } = gameService.playCardsAction(gameId, playerId, cards, faceDownIndex);
+    const { gameState, blowUp, winner, cardsPlayed } = gameService.playCardsAction(gameId, playerId, cards, faceDownIndex);
 
     // Log action to Redis
     const action: 'play_cards' | 'blow_up' = blowUp ? 'blow_up' : 'play_cards';
     const description = blowUp
-      ? `Player ${playerId.substring(0, 8)} played ${cards.length} card(s) and blew up the pile`
-      : `Player ${playerId.substring(0, 8)} played ${cards.length} card(s)`;
+      ? `Player ${playerId.substring(0, 8)} played ${cardsPlayed.length} card(s) and blew up the pile`
+      : `Player ${playerId.substring(0, 8)} played ${cardsPlayed.length} card(s)`;
 
     const logEntry: GameLogEntry = {
       timestamp: new Date(),
       playerId,
       action,
-      cards,
+      cards: cardsPlayed,
       description,
     };
     redisService.logGameAction(gameId, logEntry).catch((err) => {
@@ -308,8 +308,8 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
       const roomId = gameService.getRoomIdFromGame(gameId);
       if (roomId) {
         // If blow-up occurred, notify all players in room
-        if (blowUp) {
-          const reason = cards[0].rank === '10' ? 'ten' : 'four_of_kind';
+        if (blowUp && cardsPlayed.length > 0) {
+          const reason = cardsPlayed[0].rank === '10' ? 'ten' : 'four_of_kind';
           io.to(roomId).emit('game:pileBlown', {
             playerId,
             reason,

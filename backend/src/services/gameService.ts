@@ -250,7 +250,7 @@ export class GameService {
     playerId: PlayerId,
     cards: Card[],
     providedFaceDownIndex?: number
-  ): { gameState: GameState; blowUp: boolean; winner: boolean } {
+  ): { gameState: GameState; blowUp: boolean; winner: boolean; cardsPlayed: Card[] } {
     const game = this.getGame(gameId);
     if (!game) {
       throw new Error('Game not found');
@@ -264,6 +264,7 @@ export class GameService {
     // Determine source of cards
     let source: 'hand' | 'faceUp' | 'faceDown' = 'hand';
     let faceDownIndex: number | undefined;
+    let actualCardsPlayed: Card[] = cards;
 
     if (playerState.hand.length > 0) {
       source = 'hand';
@@ -273,6 +274,13 @@ export class GameService {
       source = 'faceDown';
       // Use provided index for facedown cards
       faceDownIndex = providedFaceDownIndex;
+      // For facedown cards, get the actual card from the player state
+      if (faceDownIndex !== undefined && faceDownIndex >= 0 && faceDownIndex < playerState.faceDown.length) {
+        const faceDownCard = playerState.faceDown[faceDownIndex];
+        if (faceDownCard !== null) {
+          actualCardsPlayed = [faceDownCard];
+        }
+      }
     }
 
     const oldPileLength = game.pile.length;
@@ -285,7 +293,7 @@ export class GameService {
     // Check if player won
     const winner = updatedGame.phase === 'ended' && updatedGame.winner === playerId;
 
-    return { gameState: updatedGame, blowUp, winner };
+    return { gameState: updatedGame, blowUp, winner, cardsPlayed: actualCardsPlayed };
   }
 
   /**
