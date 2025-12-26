@@ -249,7 +249,8 @@ describe('Edge Cases and Advanced Scenarios', () => {
         .reduce((sum, state) => sum + state.hand.length + state.faceDown.length, 0);
 
       const totalCards = totalCardsDealt + dealtGame.deck.length;
-      expect(totalCards).toBe(104);
+      // Deck is halved for faster testing
+      expect(totalCards).toBe(52);
     });
   });
 

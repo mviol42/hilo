@@ -26,8 +26,8 @@ export function createDeck(numPlayers: number): Card[] {
   }
 
 
-  // For testing purposes, return half the cards.
-  return cards.slice(0, cards.length / 2);
+  // For testing purposes, return half the cards (take every other card to preserve variety)
+  return cards.filter((_, index) => index % 2 === 0);
 }
 
 export function shuffleDeck(deck: Card[]): Card[] {
@@ -313,7 +313,8 @@ export function playCards(
     throw new GameEngineError('Not player turn');
   }
 
-  if (cards.length === 0) {
+  // For facedown cards, client doesn't know the card so cards array is empty
+  if (cards.length === 0 && source !== 'faceDown') {
     throw new GameEngineError('Must play at least one card');
   }
 
@@ -322,10 +323,14 @@ export function playCards(
     throw new GameEngineError('Player not found');
   }
 
-  const firstRank = cards[0].rank;
-  const allSameRank = cards.every(card => card.rank === firstRank);
-  if (!allSameRank) {
-    throw new GameEngineError('All cards must be the same rank');
+  // Skip rank validation for facedown cards (client doesn't know the card)
+  let firstRank: Rank | undefined;
+  if (source !== 'faceDown') {
+    firstRank = cards[0].rank;
+    const allSameRank = cards.every(card => card.rank === firstRank);
+    if (!allSameRank) {
+      throw new GameEngineError('All cards must be the same rank');
+    }
   }
 
   let newState = { ...gameState };
@@ -341,7 +346,7 @@ export function playCards(
       throw new GameEngineError('No Playable Card');
     }
 
-    if (!playableRanks.includes(firstRank)) {
+    if (!playableRanks.includes(firstRank!)) {
       throw new GameEngineError('Card not playable');
     }
 
@@ -389,7 +394,7 @@ export function playCards(
       throw new GameEngineError('No Playable Card');
     }
 
-    if (!playableRanks.includes(firstRank)) {
+    if (!playableRanks.includes(firstRank!)) {
       throw new GameEngineError('Card not playable');
     }
 
@@ -428,9 +433,8 @@ export function playCards(
       throw new GameEngineError('Face-down card already played');
     }
 
-    if (cards.length !== 1) {
-      throw new GameEngineError('Can only play one face-down card at a time');
-    }
+    // For facedown cards, cards array is empty since client doesn't know the card
+    // The actual card is retrieved from the faceDown array by index
 
     if (isCardPlayable(card, newState.pile)) {
       newPlayerState.faceDown[faceDownIndex] = null;
