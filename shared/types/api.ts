@@ -5,7 +5,7 @@
 import { LobbyId, LobbyState } from './lobby';
 import { PlayerId } from './player';
 import { GameState, PlayerView } from './game';
-import { Card } from './card';
+import { Card, DeckStrategy } from './card';
 
 // Lobby endpoints
 
@@ -49,6 +49,7 @@ export interface ReadyLobbyResponse {
 export interface StartGameRequest {
   lobbyId: LobbyId;
   playerId: PlayerId;
+  deckStrategy?: DeckStrategy; // Defaults to 'standard' if not provided
 }
 
 export interface StartGameResponse {

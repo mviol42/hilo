@@ -242,15 +242,15 @@ describe('Edge Cases and Advanced Scenarios', () => {
 
   describe('Deck Management Edge Cases', () => {
     it('should handle running out of deck mid-game', () => {
-      const game = initializeGame(['p1', 'p2', 'p3', 'p4', 'p5']);
+      const game = initializeGame(['p1', 'p2', 'p3', 'p4', 'p5'], 'standard');
       const dealtGame = dealCards(game);
 
       const totalCardsDealt = Array.from(dealtGame.players.values())
         .reduce((sum, state) => sum + state.hand.length + state.faceDown.length, 0);
 
       const totalCards = totalCardsDealt + dealtGame.deck.length;
-      // Deck is halved for faster testing
-      expect(totalCards).toBe(52);
+      // 5 players = 2 decks (104 cards) with standard strategy
+      expect(totalCards).toBe(104);
     });
   });
 
