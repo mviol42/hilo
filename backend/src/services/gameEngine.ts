@@ -25,7 +25,9 @@ export function createDeck(numPlayers: number): Card[] {
     }
   }
 
-  return cards;
+
+  // For testing purposes, return half the cards.
+  return cards.slice(0, cards.length / 2);
 }
 
 export function shuffleDeck(deck: Card[]): Card[] {
