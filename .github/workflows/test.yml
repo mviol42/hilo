@@ -32,7 +32,7 @@ jobs:
       run: cd shared && npm run build
 
     - name: Build (backend) + Test
-      run: cd backend && npm build && npm run test:all
+      run: cd backend && npm run build && npm run test:all
 
     - name: Build (client) + Test
-      run: cd client && npm build && npm run test
+      run: cd client && npm run build && npm run test
