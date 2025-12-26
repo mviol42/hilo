@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
 import { usePlayer, useUI, useLobby } from '@/context'
-import { Button, Input } from '@/components'
+import { Button, Input, HowToPlayModal } from '@/components'
 
 export function LandingPage() {
   const navigate = useNavigate()
@@ -14,6 +14,7 @@ export function LandingPage() {
   const [lobbyIdInput, setLobbyIdInput] = useState('')
   const [joinError, setJoinError] = useState<string | null>(null)
   const [nameInput, setNameInput] = useState(playerName || '')
+  const [showHowToPlay, setShowHowToPlay] = useState(false)
 
   const handleCreateLobby = async () => {
     try {
@@ -182,12 +183,21 @@ export function LandingPage() {
         <div className="mt-8 text-center">
           <a
             href="#"
-            className="text-purple-600 hover:text-purple-700 text-sm font-medium"
+            onClick={(e) => {
+              e.preventDefault()
+              setShowHowToPlay(true)
+            }}
+            className="text-purple-600 hover:text-purple-700 text-sm font-medium cursor-pointer"
           >
             How to Play
           </a>
         </div>
       </div>
+
+      <HowToPlayModal
+        isOpen={showHowToPlay}
+        onClose={() => setShowHowToPlay(false)}
+      />
     </div>
   )
 }
