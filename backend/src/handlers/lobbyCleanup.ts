@@ -12,8 +12,8 @@ import { redisService } from '../services/redisService';
 import { logger } from '../config/logger';
 import type { TypedServer } from './lobbyHandlers';
 
-// Grace period for lobby cleanup after disconnect (60 seconds)
-const LOBBY_DISCONNECT_GRACE_PERIOD_MS = 60 * 1000;
+// Grace period for lobby cleanup after disconnect (30 seconds)
+const LOBBY_DISCONNECT_GRACE_PERIOD_MS = 30 * 1000;
 
 // Track pending lobby deletions: Map<lobbyId, Map<playerId, timeoutId>>
 const pendingLobbyDeletions = new Map<LobbyId, Map<PlayerId, NodeJS.Timeout>>();

@@ -186,10 +186,10 @@ describe('Disconnect Grace Period', () => {
       // Wait a bit for disconnect handler to execute
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      // Verify setTimeout was called with 60 second delay (60000ms)
+      // Verify setTimeout was called with 30 second delay (30000ms)
       expect(setTimeoutSpy).toHaveBeenCalledWith(
         expect.any(Function),
-        60000 // 60 seconds grace period
+        30000 // 30 seconds grace period
       );
 
       // Cleanup

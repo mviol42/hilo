@@ -72,7 +72,7 @@ describe('LobbyCleanup', () => {
       expect(result).toBe(true);
 
       // Advance timers - player should NOT be removed
-      await vi.advanceTimersByTimeAsync(65000);
+      await vi.advanceTimersByTimeAsync(35000);
 
       // Verify player is still in lobby
       const updatedLobby = await lobbyService.getLobby(lobby.id);
@@ -101,8 +101,8 @@ describe('LobbyCleanup', () => {
       // Schedule cleanup
       scheduleLobbyCleanup(mockIo, lobby.id, player1.id, false, lobby.leaderId);
 
-      // Advance time by 30 seconds (less than 60 second grace period)
-      await vi.advanceTimersByTimeAsync(30000);
+      // Advance time by 15 seconds (less than 30 second grace period)
+      await vi.advanceTimersByTimeAsync(15000);
 
       // Player should still be in lobby
       const updatedLobby = await lobbyService.getLobby(lobby.id);
@@ -116,8 +116,8 @@ describe('LobbyCleanup', () => {
       // Schedule cleanup
       scheduleLobbyCleanup(mockIo, lobby.id, player1.id, false, lobby.leaderId);
 
-      // Advance time by 65 seconds (past 60 second grace period)
-      await vi.advanceTimersByTimeAsync(65000);
+      // Advance time by 35 seconds (past 30 second grace period)
+      await vi.advanceTimersByTimeAsync(35000);
 
       // Player should be removed
       const updatedLobby = await lobbyService.getLobby(lobby.id);
@@ -132,7 +132,7 @@ describe('LobbyCleanup', () => {
       scheduleLobbyCleanup(mockIo, lobby.id, player1.id, false, lobby.leaderId);
 
       // Advance time past grace period
-      await vi.advanceTimersByTimeAsync(65000);
+      await vi.advanceTimersByTimeAsync(35000);
 
       // Lobby should be deleted
       const updatedLobby = await lobbyService.getLobby(lobby.id);
@@ -148,7 +148,7 @@ describe('LobbyCleanup', () => {
       scheduleLobbyCleanup(mockIo, lobby.id, player2.id, false, lobby.leaderId);
 
       // Advance time past grace period
-      await vi.advanceTimersByTimeAsync(65000);
+      await vi.advanceTimersByTimeAsync(35000);
 
       // Lobby should still exist with player1
       const updatedLobby = await lobbyService.getLobby(lobby.id);
@@ -166,7 +166,7 @@ describe('LobbyCleanup', () => {
       scheduleLobbyCleanup(mockIo, lobby.id, player2.id, false, lobby.leaderId);
 
       // Advance time past grace period
-      await vi.advanceTimersByTimeAsync(65000);
+      await vi.advanceTimersByTimeAsync(35000);
 
       // Verify emit was called
       expect(mockTo).toHaveBeenCalledWith(lobby.id);
@@ -184,7 +184,7 @@ describe('LobbyCleanup', () => {
       scheduleLobbyCleanup(mockIo, lobby.id, player1.id, true, player1.id);
 
       // Advance time past grace period
-      await vi.advanceTimersByTimeAsync(65000);
+      await vi.advanceTimersByTimeAsync(35000);
 
       // Verify leaderChanged event was emitted
       expect(mockEmit).toHaveBeenCalledWith('lobby:leaderChanged', expect.objectContaining({
@@ -203,7 +203,7 @@ describe('LobbyCleanup', () => {
       await lobbyService.removeLobby(lobby.id);
 
       // Advance time past grace period - should not throw error
-      await expect(vi.advanceTimersByTimeAsync(65000)).resolves.not.toThrow();
+      await expect(vi.advanceTimersByTimeAsync(35000)).resolves.not.toThrow();
     });
 
     it('should handle player already removed during grace period', async () => {
@@ -218,7 +218,7 @@ describe('LobbyCleanup', () => {
       await lobbyService.leaveLobby(lobby.id, player1.id);
 
       // Advance time past grace period - should not throw error
-      await expect(vi.advanceTimersByTimeAsync(65000)).resolves.not.toThrow();
+      await expect(vi.advanceTimersByTimeAsync(35000)).resolves.not.toThrow();
     });
 
     it('should support multiple pending deletions for different players', async () => {
@@ -232,7 +232,7 @@ describe('LobbyCleanup', () => {
       scheduleLobbyCleanup(mockIo, lobby.id, player2.id, false, lobby.leaderId);
 
       // Advance time past grace period
-      await vi.advanceTimersByTimeAsync(65000);
+      await vi.advanceTimersByTimeAsync(35000);
 
       // Both players should be removed, player3 should remain
       const updatedLobby = await lobbyService.getLobby(lobby.id);
@@ -255,7 +255,7 @@ describe('LobbyCleanup', () => {
       cancelPendingDeletion(lobby.id, player1.id);
 
       // Advance time past grace period
-      await vi.advanceTimersByTimeAsync(65000);
+      await vi.advanceTimersByTimeAsync(35000);
 
       // Player1 should remain, player2 should be removed
       const updatedLobby = await lobbyService.getLobby(lobby.id);
