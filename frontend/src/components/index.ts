@@ -1,5 +1,7 @@
 export { Card } from './Card'
 export { Hand } from './Hand'
+export { StackedCards } from './StackedCards'
+export { PlayAnimation } from './PlayAnimation'
 export { Button } from './Button'
 export { Input } from './Input'
 export { ToastContainer } from './Toast'

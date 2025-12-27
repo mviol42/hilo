@@ -26,7 +26,8 @@
       "Skill(context7)",
       "Bash(docker-compose:*)",
       "Bash(tee:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(git stash:*)"
     ]
   }
 }

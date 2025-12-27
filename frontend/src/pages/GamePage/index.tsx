@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import type { Card as CardType } from '@hilo/shared'
 import { apiClient } from '@/services/api'
 import { usePlayer, useGame, useUI } from '@/context'
-import { Card, Hand, Button } from '@/components'
+import { Card, Hand, StackedCards, PlayAnimation, Button } from '@/components'
 
 export function GamePage() {
   const navigate = useNavigate()
@@ -11,15 +11,12 @@ export function GamePage() {
   const gameId = searchParams.get('id')
 
   const { playerId } = usePlayer()
-  const { gameState, selectedCards, showFaceUp, lastEvent, dispatch: gameDispatch } = useGame()
+  const { gameState, selectedCards, showFaceUp, lastEvent, lastPlayedCards, pileBlownInfo, dispatch: gameDispatch } = useGame()
   const { showToast, setIsLoading } = useUI()
 
   const [setupSelectedCards, setSetupSelectedCards] = useState<CardType[]>([])
-  const [animationMessage, setAnimationMessage] = useState<{
-    text: string
-    color: string
-  } | null>(null)
   const [slideAnimation, setSlideAnimation] = useState<'top' | 'bottom' | null>(null)
+  const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set())
   const [revealedCard, setRevealedCard] = useState<{
     card: CardType
     outcome: 'pile' | 'pickup'
@@ -50,26 +47,20 @@ export function GamePage() {
     }
   }, [gameId, navigate, gameState, showToast])
 
-  // Handle game events for animations
+  // Handle game events - clear events after processing
   useEffect(() => {
     if (lastEvent.type === 'pile_blown') {
-      const reason = lastEvent.data.reason
-      if (reason === 'ten') {
-        showAnimation('Exploded! Play again', 'text-green-500')
-      } else if (reason === 'four_of_kind') {
-        showAnimation('Bonus play!', 'text-blue-500')
-      }
       setTimeout(() => gameDispatch({ type: 'CLEAR_LAST_EVENT' }), 2000)
-    } else if (lastEvent.type === 'player_won') {
-      const winnerName = lastEvent.data.winnerName
-      showAnimation(`${winnerName} won!`, 'text-yellow-500')
     }
   }, [lastEvent, gameDispatch])
 
-  const showAnimation = (text: string, color: string) => {
-    setAnimationMessage({ text, color })
-    setTimeout(() => setAnimationMessage(null), 2000)
-  }
+  // Auto-dismiss standalone pile blown animation
+  useEffect(() => {
+    if (pileBlownInfo && !lastPlayedCards) {
+      const timer = setTimeout(() => gameDispatch({ type: 'CLEAR_PILE_BLOWN' }), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [pileBlownInfo, lastPlayedCards, gameDispatch])
 
   // SETUP PHASE: Select face-up cards
   const handleSetupCardClick = (card: CardType) => {
@@ -130,20 +121,10 @@ export function GamePage() {
       })
       gameDispatch({ type: 'SET_GAME_STATE', payload: response.gameState })
       gameDispatch({ type: 'CLEAR_SELECTION' })
-
-      if (response.blowUp) {
-        showAnimation('Pile cleared!', 'text-green-500')
-      }
-      if (response.winner) {
-        showAnimation('You won!', 'text-yellow-500')
-      }
     } catch (error: any) {
       console.error('Failed to play cards:', error)
       const message = error.response?.data?.message || 'Failed to play cards'
       showToast(message, 'error')
-      if (message.includes('No plays available')) {
-        showAnimation('No plays available', 'text-red-500')
-      }
     } finally {
       setIsLoading(false)
     }
@@ -179,6 +160,18 @@ export function GamePage() {
     setTimeout(() => setSlideAnimation(null), 400)
   }
 
+  const toggleOpponentExpand = (opponentId: string) => {
+    setExpandedOpponents(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(opponentId)) {
+        newSet.delete(opponentId)
+      } else {
+        newSet.add(opponentId)
+      }
+      return newSet
+    })
+  }
+
   const handleFaceDownCardClick = async (index: number) => {
     if (!gameId || !playerId) return
 
@@ -206,19 +199,13 @@ export function GamePage() {
           outcome: pickedUpPile ? 'pickup' : 'pile'
         })
 
-        // Wait for reveal animation (0.8s) + outcome animation (0.5s)
-        await new Promise(resolve => setTimeout(resolve, 1300))
+        // Wait for reveal animation (0.4s) + display time (0.25s)
+        await new Promise(resolve => setTimeout(resolve, 650))
         setRevealedCard(null)
       }
 
       // Update game state after animation
       gameDispatch({ type: 'SET_GAME_STATE', payload: response.gameState })
-
-      // Don't show additional animations - the reveal already showed the outcome
-      // Winner animation is still important though
-      if (response.winner) {
-        showAnimation('You won!', 'text-yellow-500')
-      }
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to play card'
       showToast(message, 'error')
@@ -362,34 +349,13 @@ export function GamePage() {
   }
 
   // TURN PLAY PHASE RENDER
-  // Determine which cards to display based on what's available
-  const getAvailableCards = () => {
-    if (gameState.myHand.length > 0) {
-      return showFaceUp ? gameState.myFaceUp : gameState.myHand
-    } else if (gameState.myFaceUp.length > 0) {
-      return gameState.myFaceUp
-    } else {
-      // Playing from facedown cards
-      return []
-    }
-  }
-
-  const cardsToDisplay = getAvailableCards()
   const playableCards = isMyTurn ? gameState.playableCards || [] : []
   const isPlayingFaceDown = gameState.myHand.length === 0 && gameState.myFaceUp.length === 0
+  const isPlayingFaceUp = gameState.myHand.length === 0 && gameState.myFaceUp.length > 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white p-4">
-      {/* Animation Message */}
-      {animationMessage && (
-        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
-          <div className={`${animationMessage.color} text-6xl font-bold animate-text-grow`}>
-            {animationMessage.text}
-          </div>
-        </div>
-      )}
-
-      {/* Revealed Card Animation */}
+      {/* Revealed Card Animation (for face-down plays with outcome) */}
       {revealedCard && (
         <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-50 bg-black/50">
           <div className="flex flex-col items-center gap-4">
@@ -404,6 +370,30 @@ export function GamePage() {
             }`}>
               {revealedCard.outcome === 'pile' ? 'Added to pile!' : 'Pick up the pile!'}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Play Animation (for regular plays - don't show if face-down reveal is showing) */}
+      {!revealedCard && lastPlayedCards && lastPlayedCards.cards.length > 0 && (
+        <PlayAnimation
+          cards={lastPlayedCards.cards}
+          playerName={lastPlayedCards.playerName}
+          pileBlownMessage={pileBlownInfo ? (pileBlownInfo.playerId === playerId ? 'Go again!' : 'Pile blown up!') : undefined}
+          onComplete={() => {
+            gameDispatch({ type: 'CLEAR_LAST_PLAYED' })
+            if (pileBlownInfo) {
+              gameDispatch({ type: 'CLEAR_PILE_BLOWN' })
+            }
+          }}
+        />
+      )}
+
+      {/* Standalone Pile Blown Animation (when we don't have the cards that caused it) */}
+      {!revealedCard && !lastPlayedCards && pileBlownInfo && (
+        <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-50 bg-black/50">
+          <div className="text-4xl font-bold text-green-400 animate-card-reveal">
+            {pileBlownInfo.playerId === playerId ? 'Go again!' : 'Pile blown up!'}
           </div>
         </div>
       )}
@@ -436,19 +426,37 @@ export function GamePage() {
         <div className="bg-gray-800/50 rounded-lg p-4">
           <h2 className="text-lg font-semibold mb-2">Other Players</h2>
           {Object.entries(gameState.otherPlayers).map(([pid, player]) => (
-            <div key={pid} className="flex justify-between items-center mb-2">
-              <span className="text-gray-300">{player.name}</span>
-              <div className="flex gap-1">
-                <span className="text-sm text-gray-400">Hand: {player.handCount}</span>
-                <span className="text-sm text-gray-400">Face-up: {player.faceUp.length}</span>
-                <span className="text-sm text-gray-400">Face-down: {player.faceDownCount}</span>
+            <div key={pid} className="mb-3">
+              <div
+                className="flex justify-between items-center cursor-pointer hover:bg-gray-700/50 rounded p-2 -mx-2"
+                onClick={() => toggleOpponentExpand(pid)}
+              >
+                <span className="text-gray-300 flex items-center gap-2">
+                  {player.name}
+                  <span className={`text-xs transition-transform ${expandedOpponents.has(pid) ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
+                </span>
+                <div className="flex gap-2">
+                  <span className="text-sm text-gray-400">{player.handCount} cards in hand</span>
+                </div>
               </div>
+
+              {expandedOpponents.has(pid) && (
+                <div className="mt-2 animate-slide-in-from-top">
+                  <StackedCards
+                    faceUpCards={player.faceUp}
+                    faceDownCount={player.faceDownCount}
+                    size="small"
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>
 
         {/* Toggle Button - only show if player has hand cards */}
-        {(gameState.myHand.length > 0 && gameState.myFaceUp.length > 0) &&  (
+        {(gameState.myHand.length > 0 && gameState.myFaceUp.length > 0) && (
           <div className="flex justify-center">
             <Button onClick={handleToggleFaceUp} variant="secondary">
               {showFaceUp ? 'Show Hand' : 'Show Face Up Cards'}
@@ -456,59 +464,59 @@ export function GamePage() {
           </div>
         )}
 
-        {/* Player's Cards */}
-        {!isPlayingFaceDown && cardsToDisplay.length > 0 && (
+        {/* Player's Hand - shown when toggle is off and has hand cards */}
+        {gameState.myHand.length > 0 && !showFaceUp && (
           <Hand
-            cards={cardsToDisplay}
+            cards={gameState.myHand}
             selectedCards={selectedCards}
             playableCards={playableCards}
             onCardClick={isMyTurn ? handlePlayCardClick : undefined}
-            title={
-              gameState.myHand.length > 0
-                ? showFaceUp
-                  ? 'Your Face-Up Cards'
-                  : 'Your Hand'
-                : 'Your Face-Up Cards'
-            }
+            title="Your Hand"
             size="medium"
             className={`bg-gray-800/50 rounded-lg p-4 ${
-              slideAnimation === 'top' ? 'animate-slide-in-from-top' :
               slideAnimation === 'bottom' ? 'animate-slide-in-from-bottom' : ''
             }`}
           />
         )}
 
-        {/* Facedown Cards */}
-        {isPlayingFaceDown && gameState.myFaceDownCount > 0 && (
-          <div className="bg-gray-800/50 rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2 text-white">Your Face-Down Cards</h3>
-            <div className="flex gap-2 justify-center">
-              {gameState.myFaceDownPlayed.map((isPlayed: boolean, index: number) => (
-                <div key={index} className="flex flex-col items-center gap-2">
-                  {!isPlayed && (
-                    <Card
-                      card={{ rank: '2', suit: 'hearts' }} // Dummy card, will be shown facedown
-                      size="medium"
-                      faceDown
-                      selectable={isMyTurn}
-                      onClick={isMyTurn ? () => handleFaceDownCardClick(index) : undefined}
-                    />
-                  )}
-                  {isPlayed && (
-                    <div className="w-16 h-24 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center text-gray-600">
-                      Played
-                    </div>
-                  )}
-                  <span className="text-sm text-gray-400">Slot {index}</span>
-                </div>
-              ))}
-            </div>
-            {isMyTurn && (
-              <p className="text-sm text-gray-400 text-center mt-4">
-                Select a face-down card to play (blind)
-              </p>
+        {/* Player's Face-Up + Face-Down Stacked - shown when toggled or no hand cards */}
+        {((gameState.myHand.length > 0 && showFaceUp) || isPlayingFaceUp) && (
+          <div className={`bg-gray-800/50 rounded-lg p-4 ${
+            slideAnimation === 'top' ? 'animate-slide-in-from-top' : ''
+          }`}>
+            <h3 className="text-lg font-semibold mb-2 text-white">
+              {isPlayingFaceUp ? 'Your Face-Up Cards (play from these)' : 'Your Face-Up Cards'}
+            </h3>
+            {isPlayingFaceUp ? (
+              // When playing from face-up, make them selectable
+              <Hand
+                cards={gameState.myFaceUp}
+                selectedCards={selectedCards}
+                playableCards={playableCards}
+                onCardClick={isMyTurn ? handlePlayCardClick : undefined}
+                size="medium"
+              />
+            ) : (
+              // When just viewing, show stacked visualization
+              <StackedCards
+                faceUpCards={gameState.myFaceUp}
+                faceDownCount={gameState.myFaceDownCount}
+                faceDownPlayed={gameState.myFaceDownPlayed}
+              />
             )}
           </div>
+        )}
+
+        {/* Face-Down Cards - shown when playing from face-down (no hand, no face-up) */}
+        {isPlayingFaceDown && gameState.myFaceDownCount > 0 && (
+          <StackedCards
+            faceUpCards={[]}
+            faceDownCount={gameState.myFaceDownCount}
+            faceDownPlayed={gameState.myFaceDownPlayed}
+            onFaceDownClick={handleFaceDownCardClick}
+            isMyTurn={isMyTurn}
+            isPlayingFromFaceDown={true}
+          />
         )}
 
         {/* Action Buttons - only show if not playing facedown cards */}

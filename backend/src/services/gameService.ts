@@ -190,7 +190,7 @@ export class GameService {
           name: playerNames[pid] || `Player ${pid.substring(0, 8)}`,
           handCount: pState.hand.length,
           faceUp: pState.faceUp,
-          faceDownCount: pState.faceDown.length,
+          faceDownCount: pState.faceDown.filter(card => card !== null).length,
         };
       }
     }
@@ -203,7 +203,7 @@ export class GameService {
       phase: game.phase,
       myHand: playerState.hand,
       myFaceUp: playerState.faceUp,
-      myFaceDownCount: playerState.faceDown.length,
+      myFaceDownCount: playerState.faceDown.filter(card => card !== null).length,
       myFaceDownPlayed: playerState.faceDown.map(card => card === null),
       otherPlayers,
       pile: game.pile,
