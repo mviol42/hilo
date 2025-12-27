@@ -27,7 +27,13 @@
       "Bash(docker-compose:*)",
       "Bash(tee:*)",
       "Bash(pkill:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(npm run test:integration:*)",
+      "Skill(backend-unit-testing)",
+      "Skill(backend-integration-testing)",
+      "Bash(npm run test:all:*)",
+      "Bash(npm run test:unit:*)",
+      "Bash(npm run:*)"
     ]
   }
 }
