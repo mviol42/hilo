@@ -206,6 +206,9 @@ export function GamePage() {
 
       // Update game state after animation
       gameDispatch({ type: 'SET_GAME_STATE', payload: response.gameState })
+      // Prevent double animation - revealedCard already showed the play outcome
+      gameDispatch({ type: 'CLEAR_LAST_PLAYED' })
+      gameDispatch({ type: 'CLEAR_PILE_BLOWN' })
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to play card'
       showToast(message, 'error')
