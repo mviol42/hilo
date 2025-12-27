@@ -151,3 +151,7 @@ These skills are automatically discovered by Claude Code when working on the pro
 ## Implementation Plan
 
 See `.planning/backend/` for detailed implementation tasks and specifications.
+
+## Deployment
+To deploy, go to `/hilo`. Then, run `./app.sh` which builds the frontend/backend into a docker image. Next, run `./app.sh push` which pushes that image to docker hub.
+Finally, (step for Mike) go to the `hilo` vm on your Proxmox server and run `docker-compose pull` followed by `docker-compose up`.
