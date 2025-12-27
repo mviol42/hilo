@@ -14,6 +14,7 @@ import {
 import { LobbyId, PlayerId } from '@hilo/shared';
 import { lobbyService } from '../services/lobbyService';
 import { redisService } from '../services/redisService';
+import { cancelPendingDeletion, scheduleLobbyCleanup } from './lobbyCleanup';
 
 export type TypedServer = Server<ClientToServerEvents, ServerToClientEvents>;
 export type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -55,6 +56,9 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
       if (!player) {
         throw new Error('Player not found in lobby');
       }
+
+      // Cancel any pending deletion for this player (they're reconnecting)
+      cancelPendingDeletion(lobbyId, playerId);
 
       // Update socket ID for the existing player
       await lobbyService.updateSocketId(lobbyId, playerId, socket.id);
@@ -158,37 +162,12 @@ function handleDisconnect(io: TypedServer, socket: TypedSocket) {
         return;
       }
 
-      // If in waiting/lobby state, remove the player
-      const roomId = lobbyId;
+      // If in waiting/lobby state, schedule cleanup with grace period
       const wasLeader = lobby.leaderId === playerId;
       const oldLeaderId = lobby.leaderId;
 
-      // Leave the lobby
-      await lobbyService.leaveLobby(lobbyId, playerId);
-
-      // Clear session from Redis
-      redisService.clearPlayerSession(playerId).catch((err) => {
-        console.error('[LobbyHandlers] Failed to clear session on disconnect:', err);
-      });
-
-      // Get updated lobby state
-      const lobbyAfter = await lobbyService.getLobbyState(lobbyId);
-
-      if (lobbyAfter) {
-        // Notify remaining players in room
-        io.to(roomId).emit('lobby:playerLeft', {
-          playerId,
-          lobby: lobbyAfter,
-        });
-
-        // If leader changed, notify players
-        if (wasLeader && lobbyAfter.leaderId !== oldLeaderId) {
-          io.to(roomId).emit('lobby:leaderChanged', {
-            newLeaderId: lobbyAfter.leaderId,
-            lobby: lobbyAfter,
-          });
-        }
-      }
+      // Schedule delayed cleanup to allow quick reconnections
+      scheduleLobbyCleanup(io, lobbyId, playerId, wasLeader, oldLeaderId);
     } catch (error) {
       console.error('Error handling disconnect:', error);
     }

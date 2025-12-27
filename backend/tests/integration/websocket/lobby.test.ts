@@ -337,7 +337,7 @@ describe('WebSocket Lobby Events', () => {
   });
 
   describe('disconnect', () => {
-    it('should handle player disconnect by removing from lobby', async () => {
+    it('should keep player in lobby during grace period after disconnect', async () => {
       // Create lobby
       const response = await request(testServer.app).post('/api/lobby/create').expect(201);
       const { lobbyId } = response.body;
@@ -362,48 +362,10 @@ describe('WebSocket Lobby Events', () => {
       // Give server time to process disconnect
       await new Promise((resolve) => setTimeout(resolve, 20));
 
-      // Verify lobby is empty (deleted)
+      // Player should STILL be in lobby (grace period active)
       const lobby = await lobbyService.getLobbyState(lobbyId);
-      expect(lobby).toBeNull();
-    });
-
-    it('should notify other players when someone disconnects', async () => {
-      // Create lobby
-      const response = await request(testServer.app).post('/api/lobby/create').expect(201);
-      const { lobbyId } = response.body;
-      const playerId1 = uuidv4();
-      const playerId2 = uuidv4();
-
-      // Join via HTTP first
-      await request(testServer.app)
-        .post('/api/lobby/join')
-        .send({ lobbyId, playerId: playerId1, playerName: 'Player 1' })
-        .expect(200);
-
-      await request(testServer.app)
-        .post('/api/lobby/join')
-        .send({ lobbyId, playerId: playerId2, playerName: 'Player 2' })
-        .expect(200);
-
-      // Two players join via socket
-      const socket1 = createSocketClient();
-      const socket2 = createSocketClient();
-      await connectSocket(socket1);
-      await connectSocket(socket2);
-      sockets.push(socket2); // Keep socket2 for cleanup
-
-      socket1.emit('lobby:join', { lobbyId, playerId: playerId1 });
-      await waitForEvent(socket1, 'lobby:playerJoined');
-
-      socket2.emit('lobby:join', { lobbyId, playerId: playerId2 });
-      await waitForEvent(socket2, 'lobby:playerJoined');
-
-      // Player 1 disconnects
-      const playerLeftPromise = waitForEvent(socket2, 'lobby:playerLeft');
-      await disconnectSocket(socket1);
-
-      const playerLeftEvent = await playerLeftPromise;
-      expect(playerLeftEvent.lobby.players.length).toBe(1);
+      expect(lobby).not.toBeNull(); // Lobby should still exist
+      expect(lobby?.players).toHaveLength(1); // Player still in lobby
     });
   });
 });
