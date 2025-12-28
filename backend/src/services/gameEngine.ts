@@ -402,24 +402,6 @@ export function playCards(
 
     newState.pile.push(...cards);
     newState.players.set(playerId, newPlayerState);
-
-    const handEmptyAfterPlay = newPlayerState.hand.length === 0;
-
-    if (handEmptyAfterPlay && newPlayerState.faceUp.length > 0) {
-      const bonusCards = newPlayerState.faceUp.filter(c => c.rank === firstRank);
-      if (bonusCards.length > 0) {
-        for (const card of bonusCards) {
-          const idx = newPlayerState.faceUp.findIndex(
-            c => c.rank === card.rank && c.suit === card.suit
-          );
-          if (idx !== -1) {
-            newPlayerState.faceUp.splice(idx, 1);
-            newState.pile.push(card);
-          }
-        }
-        newState.players.set(playerId, newPlayerState);
-      }
-    }
   } else if (source === 'faceUp') {
     if (newPlayerState.hand.length > 0) {
       throw new GameEngineError('Must play from hand first');

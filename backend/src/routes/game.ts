@@ -226,8 +226,13 @@ gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
       cardIndices.push(index);
     }
 
+    // Get player name from lobby
+    const roomId = await gameService.getRoomIdFromGame(gameId);
+    const lobby = roomId ? await lobbyService.getLobby(roomId) : null;
+    const playerName = lobby?.players.get(playerId)?.name || `Player ${playerId.substring(0, 8)}`;
+
     // Select face-up cards
-    const updatedGame = await gameService.selectFaceUp(gameId, playerId, cardIndices);
+    const updatedGame = await gameService.selectFaceUp(gameId, playerId, playerName, cardIndices);
 
     // Log action to Redis
     const logEntry: GameLogEntry = {
@@ -298,8 +303,19 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
       });
     }
 
+    // Get player name from lobby
+    const roomId = await gameService.getRoomIdFromGame(gameId);
+    const lobby = roomId ? await lobbyService.getLobby(roomId) : null;
+    const playerName = lobby?.players.get(playerId)?.name || `Player ${playerId.substring(0, 8)}`;
+
     // Play the cards
-    const { gameState, blowUp, winner, cardsPlayed } = await gameService.playCardsAction(gameId, playerId, cards, faceDownIndex);
+    const { gameState, blowUp, winner, cardsPlayed, pickedUpPile } = await gameService.playCardsAction(
+      gameId,
+      playerId,
+      playerName,
+      cards,
+      faceDownIndex
+    );
 
     // Log action to Redis
     const action: 'play_cards' | 'blow_up' = blowUp ? 'blow_up' : 'play_cards';
@@ -320,18 +336,8 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
 
     // Broadcast via WebSocket
     if (io) {
-      const roomId = await gameService.getRoomIdFromGame(gameId);
       if (roomId) {
-        // If blow-up occurred, notify all players in room
-        if (blowUp && cardsPlayed.length > 0) {
-          const reason = cardsPlayed[0].rank === '10' ? 'ten' : 'four_of_kind';
-          io.to(roomId).emit('game:pileBlown', {
-            playerId,
-            reason,
-          });
-        }
-
-        // Broadcast state update to all players
+        // Broadcast state update to all players (includes lastAction with blow-up info)
         await broadcastGameState(io, gameId, gameState.turnOrder);
 
         // Emit turn change event to room
@@ -341,9 +347,8 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
 
         // If player won, emit winner event to room
         if (winner && gameState.winner) {
-          // Get player name from game state
-          const player = gameState.players.get(gameState.winner);
-          const winnerName = player ? `Player ${gameState.winner.substring(0, 8)}` : 'Unknown';
+          // Get player name from lobby
+          const winnerName = lobby?.players.get(gameState.winner)?.name || `Player ${gameState.winner.substring(0, 8)}`;
 
           io.to(roomId).emit('game:playerWon', {
             winnerId: gameState.winner,
@@ -364,6 +369,7 @@ gameRouter.post('/play-cards', async (req: Request, res: Response) => {
       blowUp,
       winner,
       cardsPlayed,
+      pickedUpPile,
     };
 
     res.status(200).json(response);
@@ -391,8 +397,13 @@ gameRouter.post('/pickup-pile', async (req: Request, res: Response) => {
       });
     }
 
+    // Get player name from lobby
+    const roomId = await gameService.getRoomIdFromGame(gameId);
+    const lobby = roomId ? await lobbyService.getLobby(roomId) : null;
+    const playerName = lobby?.players.get(playerId)?.name || `Player ${playerId.substring(0, 8)}`;
+
     // Pick up the pile
-    const updatedGame = await gameService.pickUpPileAction(gameId, playerId);
+    const updatedGame = await gameService.pickUpPileAction(gameId, playerId, playerName);
 
     // Log action to Redis
     const logEntry: GameLogEntry = {
@@ -407,7 +418,6 @@ gameRouter.post('/pickup-pile', async (req: Request, res: Response) => {
 
     // Broadcast via WebSocket
     if (io) {
-      const roomId = await gameService.getRoomIdFromGame(gameId);
       if (roomId) {
         // Broadcast state update to all players
         await broadcastGameState(io, gameId, updatedGame.turnOrder);

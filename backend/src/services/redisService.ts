@@ -47,6 +47,15 @@ interface SerializableGameState {
     description: string;
   }>;
   winner?: string;
+  lastAction?: {
+    type: string;
+    playerId: string;
+    playerName: string;
+    cards?: unknown[];
+    blowUpReason?: string;
+    pickedUpCount?: number;
+    timestamp: string;
+  };
 }
 
 /**
@@ -391,6 +400,7 @@ export class RedisService {
         timestamp: entry.timestamp.toISOString(),
       })),
       winner: gameState.winner,
+      lastAction: gameState.lastAction,
     };
   }
 
@@ -412,6 +422,7 @@ export class RedisService {
         timestamp: new Date(entry.timestamp),
       })),
       winner: data.winner,
+      lastAction: data.lastAction,
     } as GameState;
   }
 }

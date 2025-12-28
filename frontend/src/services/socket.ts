@@ -9,7 +9,6 @@ import type {
   LobbyGameStartingEvent,
   GameStateUpdateEvent,
   GameTurnChangeEvent,
-  GamePileBlownEvent,
   GamePlayerWonEvent,
   ErrorEvent,
 } from '@hilo/shared'
@@ -236,12 +235,6 @@ class SocketManager {
     if (!this.socket) throw new Error('Socket not connected')
     this.socket.on('game:turnChange', handler)
     return () => this.socket?.off('game:turnChange', handler)
-  }
-
-  onGamePileBlown(handler: SocketEventHandler<GamePileBlownEvent>): () => void {
-    if (!this.socket) throw new Error('Socket not connected')
-    this.socket.on('game:pileBlown', handler)
-    return () => this.socket?.off('game:pileBlown', handler)
   }
 
   onGamePlayerWon(handler: SocketEventHandler<GamePlayerWonEvent>): () => void {

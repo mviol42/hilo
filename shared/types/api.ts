@@ -87,6 +87,7 @@ export interface PlayCardsResponse {
   blowUp: boolean;
   winner: boolean;
   cardsPlayed: Card[]; // The actual cards that were played (useful for revealing face-down cards)
+  pickedUpPile?: boolean; // True if the player picked up the pile (e.g., face-down card wasn't playable)
 }
 
 export interface PickUpPileRequest {

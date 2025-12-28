@@ -65,7 +65,6 @@ describe('Game Setup Flow Integration', () => {
     vi.mocked(socketManager.onLobbyGameStarting).mockReturnValue(() => {})
 
     vi.mocked(socketManager.onGameTurnChange).mockReturnValue(() => {})
-    vi.mocked(socketManager.onGamePileBlown).mockReturnValue(() => {})
     vi.mocked(socketManager.onGamePlayerWon).mockReturnValue(() => {})
     vi.mocked(socketManager.onLobbyPlayerJoined).mockReturnValue(() => {})
     vi.mocked(socketManager.onLobbyPlayerReadied).mockReturnValue(() => {})
