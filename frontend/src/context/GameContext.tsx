@@ -19,6 +19,11 @@ interface GameContextState {
     playerId: PlayerId
     reason: 'ten' | 'four_of_kind'
   } | null
+  pilePickupInfo: {
+    playerId: PlayerId
+    playerName: string
+    cardCount: number
+  } | null
 }
 
 type GameAction =
@@ -29,48 +34,49 @@ type GameAction =
   | { type: 'TOGGLE_FACE_UP' }
   | { type: 'SET_SHOW_FACE_UP'; payload: boolean }
   | { type: 'TURN_CHANGED'; payload: { activePlayerId: PlayerId } }
-  | { type: 'PILE_BLOWN'; payload: { playerId: PlayerId; reason: 'ten' | 'four_of_kind' } }
   | { type: 'PLAYER_WON'; payload: { winnerId: PlayerId; winnerName: string } }
   | { type: 'CLEAR_LAST_EVENT' }
   | { type: 'CLEAR_LAST_PLAYED' }
   | { type: 'CLEAR_PILE_BLOWN' }
+  | { type: 'CLEAR_PILE_PICKUP' }
 
 function gameReducer(state: GameContextState, action: GameAction): GameContextState {
   switch (action.type) {
     case 'SET_GAME_STATE': {
       const newState = action.payload
-      const prevState = state.gameState
       let lastPlayedCards: GameContextState['lastPlayedCards'] = null
+      let pileBlownInfo: GameContextState['pileBlownInfo'] = null
+      let pilePickupInfo: GameContextState['pilePickupInfo'] = null
 
-      // Detect cards played by comparing pile length
-      if (prevState && newState.pile.length > prevState.pile.length) {
-        const newCardsCount = newState.pile.length - prevState.pile.length
-        const playedCards = newState.pile.slice(-newCardsCount)
+      // Read action info from server-provided lastAction
+      if (newState.lastAction) {
+        const { type, playerId, playerName, cards, blowUpReason, pickedUpCount } = newState.lastAction
+        console.log('[GameContext] lastAction received:', { type, playerName, cards, blowUpReason, pickedUpCount })
 
-        // Determine who played - look at the turn change
-        // The new activePlayerId is who plays NEXT, so previous player was someone else
-        // We can look at otherPlayers to find who might have played
-        let playerName = 'Opponent'
-
-        // If the pile grew and it wasn't our turn (we didn't initiate this update),
-        // it was an opponent. Otherwise, we'll let the GamePage set the animation directly.
-        // For WebSocket updates from opponent plays, we detect based on context.
-
-        // Check if any opponent might have played by seeing whose cards changed
-        // This is a heuristic - opponent's handCount or faceUp/faceDown might have changed
-        for (const [, player] of Object.entries(newState.otherPlayers)) {
-          // If we can identify the player who played, use their name
-          playerName = player.name
-          break // Use the first opponent for now (works for 2-player games)
+        // Set lastPlayedCards for play_cards or blow_up actions (actions with cards)
+        if ((type === 'play_cards' || type === 'blow_up') && cards && cards.length > 0) {
+          lastPlayedCards = { cards, playerName }
         }
 
-        lastPlayedCards = { cards: playedCards, playerName }
+        // Set pileBlownInfo if this was a blow-up
+        if (type === 'blow_up' && blowUpReason) {
+          pileBlownInfo = { playerId, reason: blowUpReason }
+        }
+
+        // Set pilePickupInfo if this was a pickup
+        if (type === 'pickup_pile' && pickedUpCount !== undefined) {
+          pilePickupInfo = { playerId, playerName, cardCount: pickedUpCount }
+        }
+      } else {
+        console.log('[GameContext] No lastAction in state update')
       }
 
       return {
         ...state,
         gameState: newState,
         lastPlayedCards,
+        pileBlownInfo,
+        pilePickupInfo,
       }
     }
     case 'CLEAR_GAME_STATE':
@@ -81,6 +87,7 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
         lastEvent: { type: null, data: null },
         lastPlayedCards: null,
         pileBlownInfo: null,
+        pilePickupInfo: null,
       }
     case 'TOGGLE_CARD_SELECTION': {
       const card = action.payload
@@ -130,12 +137,6 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
         ...state,
         lastEvent: { type: 'turn_change', data: action.payload },
       }
-    case 'PILE_BLOWN':
-      return {
-        ...state,
-        lastEvent: { type: 'pile_blown', data: action.payload },
-        pileBlownInfo: action.payload,
-      }
     case 'PLAYER_WON':
       return {
         ...state,
@@ -156,6 +157,11 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
         ...state,
         pileBlownInfo: null,
       }
+    case 'CLEAR_PILE_PICKUP':
+      return {
+        ...state,
+        pilePickupInfo: null,
+      }
     default:
       return state
   }
@@ -175,6 +181,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     lastEvent: { type: null, data: null },
     lastPlayedCards: null,
     pileBlownInfo: null,
+    pilePickupInfo: null,
   })
 
   // Set up WebSocket listeners
@@ -207,12 +214,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           })
         )
 
-        cleanupFns.push(
-          socketManager.onGamePileBlown((data) => {
-            console.log('[GameContext] Pile blown:', data.reason)
-            dispatch({ type: 'PILE_BLOWN', payload: data })
-          })
-        )
+        // Note: pileBlown info is now read from lastAction in game:stateUpdate
 
         cleanupFns.push(
           socketManager.onGamePlayerWon((data) => {

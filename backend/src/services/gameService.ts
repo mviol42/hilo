@@ -2,7 +2,7 @@
  * Game state management service
  */
 
-import { GameState, PlayerView } from '@hilo/shared';
+import { GameState, PlayerView, LastAction } from '@hilo/shared';
 import { PlayerId } from '@hilo/shared';
 import { Card, DeckStrategy } from '@hilo/shared';
 import {
@@ -213,6 +213,7 @@ export class GameService {
       winner: game.winner,
       winnerName: game.winner ? playerNames[game.winner] : undefined,
       playerNames,
+      lastAction: game.lastAction,
     };
   }
 
@@ -248,16 +249,31 @@ export class GameService {
    * Handle player selecting face-up cards during setup
    * @param gameId - The game ID
    * @param playerId - The player ID
+   * @param playerName - The player's display name
    * @param cardIndices - Indices of cards to select as face-up
    * @returns Updated game state
    */
-  async selectFaceUp(gameId: string, playerId: PlayerId, cardIndices: number[]): Promise<GameState> {
+  async selectFaceUp(gameId: string, playerId: PlayerId, playerName: string, cardIndices: number[]): Promise<GameState> {
     const game = await this.getGame(gameId);
     if (!game) {
       throw new Error('Game not found');
     }
 
     const updatedGame = selectFaceUpCards(game, playerId, cardIndices);
+
+    // Get the selected cards for lastAction
+    const playerState = updatedGame.players.get(playerId);
+    const selectedCards = playerState?.faceUp || [];
+
+    // Set lastAction
+    updatedGame.lastAction = {
+      type: 'select_faceup',
+      playerId,
+      playerName,
+      cards: selectedCards,
+      timestamp: new Date().toISOString(),
+    };
+
     await this.updateGame(gameId, updatedGame);
 
     return updatedGame;
@@ -304,6 +320,7 @@ export class GameService {
    * Play cards from hand, face-up, or face-down
    * @param gameId - The game ID
    * @param playerId - The player ID
+   * @param playerName - The player's display name
    * @param cards - The cards to play
    * @param faceDownIndex - Index of facedown card to play (if playing facedown)
    * @returns Updated game state and metadata about the action
@@ -311,9 +328,10 @@ export class GameService {
   async playCardsAction(
     gameId: string,
     playerId: PlayerId,
+    playerName: string,
     cards: Card[],
     providedFaceDownIndex?: number
-  ): Promise<{ gameState: GameState; blowUp: boolean; winner: boolean; cardsPlayed: Card[] }> {
+  ): Promise<{ gameState: GameState; blowUp: boolean; winner: boolean; cardsPlayed: Card[]; pickedUpPile: boolean }> {
     const game = await this.getGame(gameId);
     if (!game) {
       throw new Error('Game not found');
@@ -347,31 +365,69 @@ export class GameService {
     }
 
     const oldPileLength = game.pile.length;
+    const oldPlayerHandSize = playerState.hand.length;
     const updatedGame = playCards(game, playerId, cards, source, faceDownIndex);
-    await this.updateGame(gameId, updatedGame);
 
-    // Check if blow-up occurred (pile cleared)
-    const blowUp = updatedGame.pile.length === 0 && oldPileLength > 0;
+    // Check if player picked up the pile (hand size increased significantly)
+    const updatedPlayerState = updatedGame.players.get(playerId);
+    const newHandSize = updatedPlayerState?.hand.length ?? 0;
+    const pickedUpPile = newHandSize > oldPlayerHandSize + 1;
+
+    // Check if blow-up occurred (pile cleared and cards were on pile, but NOT from pickup)
+    const blowUp = !pickedUpPile && updatedGame.pile.length === 0 && oldPileLength > 0;
+
+    // Set lastAction on the game state
+    // pickedUpPile takes precedence: if player picked up pile, it's not a blow-up
+    const lastAction: LastAction = {
+      type: pickedUpPile ? 'pickup_pile' : blowUp ? 'blow_up' : 'play_cards',
+      playerId,
+      playerName,
+      cards: actualCardsPlayed,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (blowUp) {
+      lastAction.blowUpReason = actualCardsPlayed[0]?.rank === '10' ? 'ten' : 'four_of_kind';
+    }
+
+    if (pickedUpPile) {
+      lastAction.pickedUpCount = newHandSize - oldPlayerHandSize;
+    }
+
+    updatedGame.lastAction = lastAction;
+    await this.updateGame(gameId, updatedGame);
 
     // Check if player won
     const winner = updatedGame.phase === 'ended' && updatedGame.winner === playerId;
 
-    return { gameState: updatedGame, blowUp, winner, cardsPlayed: actualCardsPlayed };
+    return { gameState: updatedGame, blowUp, winner, cardsPlayed: actualCardsPlayed, pickedUpPile };
   }
 
   /**
    * Pick up the pile
    * @param gameId - The game ID
    * @param playerId - The player ID
+   * @param playerName - The player's display name
    * @returns Updated game state
    */
-  async pickUpPileAction(gameId: string, playerId: PlayerId): Promise<GameState> {
+  async pickUpPileAction(gameId: string, playerId: PlayerId, playerName: string): Promise<GameState> {
     const game = await this.getGame(gameId);
     if (!game) {
       throw new Error('Game not found');
     }
 
+    const pileCount = game.pile.length;
     const updatedGame = pickupPile(game, playerId);
+
+    // Set lastAction
+    updatedGame.lastAction = {
+      type: 'pickup_pile',
+      playerId,
+      playerName,
+      pickedUpCount: pileCount,
+      timestamp: new Date().toISOString(),
+    };
+
     await this.updateGame(gameId, updatedGame);
 
     return updatedGame;

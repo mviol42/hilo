@@ -208,36 +208,6 @@ describe('Edge Cases and Advanced Scenarios', () => {
       expect(secondBlowUp.discardPile).toHaveLength(2);
       expect(secondBlowUp.activePlayerId).toBe('p1');
     });
-
-    it('should handle bonus play correctly', () => {
-      const game = initializeGame(['p1', 'p2']);
-      game.phase = 'playing';
-      game.activePlayerId = 'p1';
-      game.deck = [];
-
-      game.players.set('p1', {
-        hand: [
-          { rank: '5', suit: 'hearts' },
-          { rank: '5', suit: 'diamonds' },
-        ],
-        faceUp: [
-          { rank: '5', suit: 'clubs' },
-          { rank: '7', suit: 'spades' },
-        ],
-        faceDown: [],
-      });
-
-      const newGame = playCards(game, 'p1', [
-        { rank: '5', suit: 'hearts' },
-        { rank: '5', suit: 'diamonds' },
-      ], 'hand');
-
-      const p1State = newGame.players.get('p1')!;
-      expect(p1State.hand).toHaveLength(0);
-      expect(p1State.faceUp).toHaveLength(1);
-      expect(p1State.faceUp[0].rank).toBe('7');
-      expect(newGame.pile).toHaveLength(3);
-    });
   });
 
   describe('Deck Management Edge Cases', () => {

@@ -11,7 +11,7 @@ export function GamePage() {
   const gameId = searchParams.get('id')
 
   const { playerId } = usePlayer()
-  const { gameState, selectedCards, showFaceUp, lastEvent, lastPlayedCards, pileBlownInfo, dispatch: gameDispatch } = useGame()
+  const { gameState, selectedCards, showFaceUp, lastEvent, lastPlayedCards, pileBlownInfo, pilePickupInfo, dispatch: gameDispatch } = useGame()
   const { showToast, setIsLoading } = useUI()
 
   const [setupSelectedCards, setSetupSelectedCards] = useState<CardType[]>([])
@@ -140,7 +140,6 @@ export function GamePage() {
         playerId,
       })
       gameDispatch({ type: 'SET_GAME_STATE', payload: response.gameState })
-      showToast('Picked up pile', 'info')
     } catch (error: any) {
       console.error('Failed to pick up pile:', error)
       showToast('Failed to pick up pile', 'error')
@@ -188,15 +187,10 @@ export function GamePage() {
       if (response.cardsPlayed && response.cardsPlayed.length > 0) {
         const revealedCardData = response.cardsPlayed[0]
 
-        // Determine outcome based on whether player picked up pile
-        // If the player's hand increased significantly, they picked up the pile
-        const oldHandSize = gameState?.myHand.length || 0
-        const newHandSize = response.gameState.myHand.length
-        const pickedUpPile = newHandSize > oldHandSize + 1 // More than just drawing a card
-
+        // Use server-provided pickedUpPile flag to determine outcome
         setRevealedCard({
           card: revealedCardData,
-          outcome: pickedUpPile ? 'pickup' : 'pile'
+          outcome: response.pickedUpPile ? 'pickup' : 'pile'
         })
 
         // Wait for reveal animation (0.4s) + display time (0.25s)
@@ -377,20 +371,70 @@ export function GamePage() {
         </div>
       )}
 
+      {/* Play Animation for pile pickup */}
+      {pilePickupInfo && (() => {
+
+        const resultMessagePlayer = pilePickupInfo.playerId === playerId ? 'You' : `${pilePickupInfo.playerName}`
+        const resultMessage = `${resultMessagePlayer} picked up ${pilePickupInfo.cardCount} cards`
+
+        // Determine whose turn is next
+        const nextTurnMessage = gameState.activePlayerId === playerId
+          ? 'Your turn!'
+          : `${gameState.playerNames[gameState.activePlayerId] || 'Opponent'}'s turn`
+        
+        return (
+          <PlayAnimation
+            cards={[]}
+            playerName={pilePickupInfo.playerName}
+            resultMessage={resultMessage}
+            resultType={'info'}
+            nextTurnMessage={nextTurnMessage}
+            isPickup={true}
+            onComplete={() => {
+              gameDispatch({ type: 'CLEAR_PILE_PICKUP' })
+            }}
+          />
+        )
+      })()}
+
       {/* Play Animation (for regular plays - don't show if face-down reveal is showing) */}
-      {!revealedCard && lastPlayedCards && lastPlayedCards.cards.length > 0 && (
-        <PlayAnimation
-          cards={lastPlayedCards.cards}
-          playerName={lastPlayedCards.playerName}
-          pileBlownMessage={pileBlownInfo ? (pileBlownInfo.playerId === playerId ? 'Go again!' : 'Pile blown up!') : undefined}
-          onComplete={() => {
-            gameDispatch({ type: 'CLEAR_LAST_PLAYED' })
-            if (pileBlownInfo) {
-              gameDispatch({ type: 'CLEAR_PILE_BLOWN' })
-            }
-          }}
-        />
-      )}
+      {!revealedCard && lastPlayedCards && lastPlayedCards.cards.length > 0 && (() => {
+        // Determine result message and type
+        let resultMessage: string | undefined
+        let resultType: 'success' | 'warning' | 'info' = 'info'
+
+        if (pileBlownInfo) {
+          resultMessage = pileBlownInfo.playerId === playerId ? 'Go again!' : 'Pile blown up!'
+          resultType = 'success'
+        }
+
+        // Determine whose turn is next
+        let nextTurnMessage: string | undefined
+        if (!pileBlownInfo) {
+          // Only show next turn if pile wasn't blown (blower goes again)
+          const nextPlayerName = gameState.activePlayerId === playerId
+            ? 'Your turn!'
+            : `${gameState.playerNames[gameState.activePlayerId] || 'Opponent'}'s turn`
+          nextTurnMessage = nextPlayerName
+        }
+
+        return (
+          <PlayAnimation
+            cards={lastPlayedCards.cards}
+            playerName={lastPlayedCards.playerName}
+            resultMessage={resultMessage}
+            resultType={resultType}
+            nextTurnMessage={nextTurnMessage}
+            isPickup={false}
+            onComplete={() => {
+              gameDispatch({ type: 'CLEAR_LAST_PLAYED' })
+              if (pileBlownInfo) {
+                gameDispatch({ type: 'CLEAR_PILE_BLOWN' })
+              }
+            }}
+          />
+        )
+      })()}
 
       {/* Standalone Pile Blown Animation (when we don't have the cards that caused it) */}
       {!revealedCard && !lastPlayedCards && pileBlownInfo && (

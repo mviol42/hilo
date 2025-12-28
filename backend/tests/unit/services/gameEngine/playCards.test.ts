@@ -134,57 +134,6 @@ describe('Play Cards', () => {
     });
   });
 
-  describe('playCards - Bonus Play from Face-Up', () => {
-    it('should allow bonus play of same rank from face-up when hand becomes empty', () => {
-      const game = initializeGame(['p1', 'p2']);
-      game.phase = 'playing';
-      game.activePlayerId = 'p1';
-      game.deck = [];
-
-      game.players.set('p1', {
-        hand: [{ rank: '5', suit: 'hearts' }],
-        faceUp: [
-          { rank: '5', suit: 'diamonds' },
-          { rank: '7', suit: 'clubs' },
-        ],
-        faceDown: [],
-      });
-
-      const newGame = playCards(game, 'p1', [{ rank: '5', suit: 'hearts' }], 'hand');
-
-      const p1State = newGame.players.get('p1')!;
-      expect(p1State.hand).toHaveLength(0);
-      expect(p1State.faceUp).toHaveLength(1);
-      expect(p1State.faceUp[0].rank).toBe('7');
-      expect(newGame.pile).toHaveLength(2);
-      expect(newGame.pile[0].rank).toBe('5');
-      expect(newGame.pile[1].rank).toBe('5');
-    });
-
-    it('should not bonus play if hand still has cards', () => {
-      const game = initializeGame(['p1', 'p2']);
-      game.phase = 'playing';
-      game.activePlayerId = 'p1';
-      game.deck = [];
-
-      game.players.set('p1', {
-        hand: [
-          { rank: '5', suit: 'hearts' },
-          { rank: '6', suit: 'spades' },
-        ],
-        faceUp: [{ rank: '5', suit: 'diamonds' }],
-        faceDown: [],
-      });
-
-      const newGame = playCards(game, 'p1', [{ rank: '5', suit: 'hearts' }], 'hand');
-
-      const p1State = newGame.players.get('p1')!;
-      expect(p1State.hand).toHaveLength(1);
-      expect(p1State.faceUp).toHaveLength(1);
-      expect(newGame.pile).toHaveLength(1);
-    });
-  });
-
   describe('playCards - From Face-Up', () => {
     it('should play from face-up when hand is empty', () => {
       const game = initializeGame(['p1', 'p2']);

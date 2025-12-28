@@ -23,6 +23,29 @@ export interface GameLogEntry {
   description: string;
 }
 
+/**
+ * Action types for the lastAction field
+ */
+export type GameActionType =
+  | 'play_cards' // Cards played to pile
+  | 'pickup_pile' // Player picked up pile
+  | 'blow_up' // Pile blown (10 or four-of-a-kind)
+  | 'select_faceup' // Setup phase: selected face-up cards
+  | 'game_started'; // Game transitioned to playing phase
+
+/**
+ * Information about the last action that occurred in the game
+ */
+export interface LastAction {
+  type: GameActionType;
+  playerId: PlayerId;
+  playerName: string;
+  cards?: Card[]; // Cards involved in the action
+  blowUpReason?: 'ten' | 'four_of_kind'; // If type is 'blow_up'
+  pickedUpCount?: number; // If type is 'pickup_pile', number of cards picked up
+  timestamp: string; // ISO timestamp
+}
+
 export interface GameState {
   id: string;
   phase: GamePhase;
@@ -34,6 +57,7 @@ export interface GameState {
   turnOrder: PlayerId[];
   log: GameLogEntry[];
   winner?: PlayerId;
+  lastAction?: LastAction;
 }
 
 /**
@@ -61,4 +85,5 @@ export interface PlayerView {
   winner?: PlayerId;
   winnerName?: string;
   playerNames: { [playerId: string]: string }; // Map of all player IDs to names
+  lastAction?: LastAction; // Most recent game action
 }
