@@ -1,0 +1,38 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+
+    - name: Install dependencies (backend)
+      run: cd backend && npm ci --include=dev
+
+    - name: Install dependencies (shared)
+      run: cd shared && npm ci --include=dev
+
+    - name: Install dependencies (client)
+      run: cd client && npm ci --include=dev
+    
+    - name: Build (shared)
+      run: cd shared && npm run build
+
+    - name: Build (backend) + Test
+      run: cd backend && npm run build && npm run test:all
+
+    - name: Build (client) + Test
+      run: cd client && npm run build && npm run test
