@@ -1,6 +1,8 @@
 # Multi-stage Dockerfile for Hi-Lo game server
+# Build with: docker build --platform linux/amd64 -t hilo .
+
 # Stage 1: Build all TypeScript code
-FROM --platform=linux/amd64 node:20-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -33,7 +35,7 @@ WORKDIR /app/frontend
 RUN npm run build
 
 # Stage 2: Production runtime
-FROM --platform=linux/amd64 node:20-alpine AS production
+FROM node:20-alpine AS production
 
 # Install wget for health checks
 RUN apk add --no-cache wget

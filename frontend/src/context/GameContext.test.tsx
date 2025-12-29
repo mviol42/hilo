@@ -1,8 +1,8 @@
 import { render, screen, renderHook, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom'
 import { GameProvider, useGame } from './GameContext'
-import type { PlayerView, LastAction } from '@hilo/shared'
+import type { PlayerView } from '@hilo/shared'
 
 // Mock the socket manager to prevent WebSocket setup
 vi.mock('@/services/socket', () => ({
@@ -20,7 +20,7 @@ describe('GameContext', () => {
   })
 
   function TestComponent() {
-    const { gameState, lastPlayedCards, pileBlownInfo, dispatch } = useGame()
+    const { gameState, lastPlayedCards, pileBlownInfo } = useGame()
     return (
       <div>
         <p data-testid="game-phase">{gameState?.phase || 'no game'}</p>
@@ -30,12 +30,6 @@ describe('GameContext', () => {
         <p data-testid="pile-blown-info">
           {pileBlownInfo ? JSON.stringify(pileBlownInfo) : 'none'}
         </p>
-        <button
-          data-testid="dispatch-button"
-          onClick={() => {}}
-        >
-          Dispatch
-        </button>
       </div>
     )
   }
@@ -721,7 +715,7 @@ describe('GameContext', () => {
     }: {
       onMount: (dispatch: ReturnType<typeof useGame>['dispatch']) => void
     }) {
-      const { gameState, lastPlayedCards, pileBlownInfo, dispatch } = useGame()
+      const { lastPlayedCards, pileBlownInfo, dispatch } = useGame()
 
       React.useEffect(() => {
         onMount(dispatch)

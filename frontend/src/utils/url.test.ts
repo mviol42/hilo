@@ -32,7 +32,7 @@ describe('url utilities', () => {
     beforeEach(() => {
       // Mock document.execCommand for fallback testing
       mockExecCommand = vi.fn().mockReturnValue(true)
-      document.execCommand = mockExecCommand
+      document.execCommand = mockExecCommand as typeof document.execCommand
     })
 
     it('successfully copies text using Clipboard API', async () => {
