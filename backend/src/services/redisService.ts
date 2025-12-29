@@ -83,6 +83,11 @@ export class RedisService {
    * Initialize Redis connection
    */
   async connect(): Promise<void> {
+    // If already connected (e.g., mock client injected via constructor), skip
+    if (this.isConnected && this.client) {
+      return;
+    }
+
     if (!this.isEnabled) {
       console.log('[Redis] Disabled (running in test mode or REDIS_ENABLED=false)');
       return;

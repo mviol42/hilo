@@ -35,7 +35,9 @@
       "Bash(npm run test:unit:*)",
       "Bash(npm run:*)",
       "Bash(npx vitest:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
     ]
   }
 }
