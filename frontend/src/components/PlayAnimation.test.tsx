@@ -234,4 +234,114 @@ describe('PlayAnimation', () => {
     const animatedCards = container.querySelectorAll('.animate-card-reveal')
     expect(animatedCards.length).toBeGreaterThanOrEqual(2)
   })
+
+  describe('3-player scenarios', () => {
+    it('displays correct player name for player 1 (Alice)', () => {
+      const onComplete = vi.fn()
+
+      render(
+        <PlayAnimation
+          cards={[{ rank: '5', suit: 'hearts' }]}
+          playerName="Alice"
+          onComplete={onComplete}
+        />
+      )
+
+      expect(screen.getByText('Alice played:')).toBeInTheDocument()
+    })
+
+    it('displays correct player name for player 2 (Bob)', () => {
+      const onComplete = vi.fn()
+
+      render(
+        <PlayAnimation
+          cards={[{ rank: '6', suit: 'diamonds' }]}
+          playerName="Bob"
+          onComplete={onComplete}
+        />
+      )
+
+      expect(screen.getByText('Bob played:')).toBeInTheDocument()
+    })
+
+    it('displays correct player name for player 3 (Charlie)', () => {
+      const onComplete = vi.fn()
+
+      render(
+        <PlayAnimation
+          cards={[{ rank: '7', suit: 'clubs' }]}
+          playerName="Charlie"
+          onComplete={onComplete}
+        />
+      )
+
+      expect(screen.getByText('Charlie played:')).toBeInTheDocument()
+    })
+
+    it('displays blow-up message with correct player context', () => {
+      const onComplete = vi.fn()
+
+      render(
+        <PlayAnimation
+          cards={[{ rank: '10', suit: 'spades' }]}
+          playerName="Bob"
+          resultMessage="Pile blown up!"
+          resultType="success"
+          onComplete={onComplete}
+        />
+      )
+
+      expect(screen.getByText('Bob played:')).toBeInTheDocument()
+      expect(screen.getByText('Pile blown up!')).toBeInTheDocument()
+    })
+
+    it('displays next turn message for different player', () => {
+      const onComplete = vi.fn()
+
+      render(
+        <PlayAnimation
+          cards={[{ rank: '5', suit: 'hearts' }]}
+          playerName="Alice"
+          nextTurnMessage="Bob's turn"
+          onComplete={onComplete}
+        />
+      )
+
+      expect(screen.getByText('Alice played:')).toBeInTheDocument()
+      expect(screen.getByText("Bob's turn")).toBeInTheDocument()
+    })
+
+    it('correctly shows player 2 blow-up with go again message', () => {
+      const onComplete = vi.fn()
+
+      render(
+        <PlayAnimation
+          cards={[{ rank: '10', suit: 'clubs' }]}
+          playerName="Bob"
+          resultMessage="Go again!"
+          resultType="success"
+          onComplete={onComplete}
+        />
+      )
+
+      expect(screen.getByText('Bob played:')).toBeInTheDocument()
+      expect(screen.getByText('Go again!')).toBeInTheDocument()
+    })
+
+    it('correctly shows player 3 play with next turn to player 1', () => {
+      const onComplete = vi.fn()
+
+      render(
+        <PlayAnimation
+          cards={[{ rank: '7', suit: 'spades' }]}
+          playerName="Charlie"
+          nextTurnMessage="Alice's turn"
+          onComplete={onComplete}
+        />
+      )
+
+      expect(screen.getByText('Charlie played:')).toBeInTheDocument()
+      expect(screen.getByText("Alice's turn")).toBeInTheDocument()
+    })
+  })
 })

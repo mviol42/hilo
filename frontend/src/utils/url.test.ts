@@ -27,7 +27,15 @@ describe('url utilities', () => {
   })
 
   describe('copyToClipboard', () => {
-    it('successfully copies text to clipboard', async () => {
+    let mockExecCommand: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      // Mock document.execCommand for fallback testing
+      mockExecCommand = vi.fn().mockReturnValue(true)
+      document.execCommand = mockExecCommand
+    })
+
+    it('successfully copies text using Clipboard API', async () => {
       const mockWriteText = vi.fn().mockResolvedValue(undefined)
       Object.assign(navigator, {
         clipboard: {
@@ -39,15 +47,54 @@ describe('url utilities', () => {
 
       expect(result).toBe(true)
       expect(mockWriteText).toHaveBeenCalledWith('test text')
+      expect(mockExecCommand).not.toHaveBeenCalled()
     })
 
-    it('returns false when clipboard write fails', async () => {
-      const mockWriteText = vi.fn().mockRejectedValue(new Error('Permission denied'))
+    it('falls back to execCommand when Clipboard API fails (iOS Safari/Chrome)', async () => {
+      const mockWriteText = vi.fn().mockRejectedValue(new Error('NotAllowedError'))
       Object.assign(navigator, {
         clipboard: {
           writeText: mockWriteText,
         },
       })
+
+      const result = await copyToClipboard('test text')
+
+      expect(result).toBe(true)
+      expect(mockWriteText).toHaveBeenCalledWith('test text')
+      expect(mockExecCommand).toHaveBeenCalledWith('copy')
+    })
+
+    it('returns false when both Clipboard API and fallback fail', async () => {
+      const mockWriteText = vi.fn().mockRejectedValue(new Error('NotAllowedError'))
+      Object.assign(navigator, {
+        clipboard: {
+          writeText: mockWriteText,
+        },
+      })
+      mockExecCommand.mockReturnValue(false)
+
+      const result = await copyToClipboard('test text')
+
+      expect(result).toBe(false)
+    })
+
+    it('uses fallback when Clipboard API is not available', async () => {
+      Object.assign(navigator, {
+        clipboard: undefined,
+      })
+
+      const result = await copyToClipboard('test text')
+
+      expect(result).toBe(true)
+      expect(mockExecCommand).toHaveBeenCalledWith('copy')
+    })
+
+    it('returns false when Clipboard API unavailable and fallback fails', async () => {
+      Object.assign(navigator, {
+        clipboard: undefined,
+      })
+      mockExecCommand.mockReturnValue(false)
 
       const result = await copyToClipboard('test text')
 

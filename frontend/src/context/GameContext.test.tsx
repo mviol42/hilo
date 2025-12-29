@@ -356,6 +356,365 @@ describe('GameContext', () => {
     })
   })
 
+  describe('3-player lastAction scenarios', () => {
+    function DispatchableComponent({
+      onMount,
+    }: {
+      onMount: (dispatch: ReturnType<typeof useGame>['dispatch']) => void
+    }) {
+      const { gameState, lastPlayedCards, pileBlownInfo, pilePickupInfo, dispatch } = useGame()
+
+      React.useEffect(() => {
+        onMount(dispatch)
+      }, [])
+
+      return (
+        <div>
+          <p data-testid="game-phase">{gameState?.phase || 'no game'}</p>
+          <p data-testid="last-played-cards">
+            {lastPlayedCards ? JSON.stringify(lastPlayedCards) : 'none'}
+          </p>
+          <p data-testid="pile-blown-info">
+            {pileBlownInfo ? JSON.stringify(pileBlownInfo) : 'none'}
+          </p>
+          <p data-testid="pile-pickup-info">
+            {pilePickupInfo ? JSON.stringify(pilePickupInfo) : 'none'}
+          </p>
+        </div>
+      )
+    }
+
+    it('correctly extracts player 1 name in 3-player game', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      const playerView: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {
+          'player-2': { name: 'Bob', handCount: 5, faceUp: [], faceDownCount: 3 },
+          'player-3': { name: 'Charlie', handCount: 5, faceUp: [], faceDownCount: 3 },
+        },
+        pile: [{ rank: '5', suit: 'hearts' }],
+        deckCount: 30,
+        activePlayerId: 'player-2',
+        playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        lastAction: {
+          type: 'play_cards',
+          playerId: 'player-1',
+          playerName: 'Alice',
+          cards: [{ rank: '5', suit: 'hearts' }],
+          timestamp: new Date().toISOString(),
+        },
+      }
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView })
+      })
+
+      const lastPlayedText = screen.getByTestId('last-played-cards').textContent
+      const lastPlayed = JSON.parse(lastPlayedText!)
+      expect(lastPlayed.playerName).toBe('Alice')
+    })
+
+    it('correctly extracts player 2 name in 3-player game', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      const playerView: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {
+          'player-2': { name: 'Bob', handCount: 4, faceUp: [], faceDownCount: 3 },
+          'player-3': { name: 'Charlie', handCount: 5, faceUp: [], faceDownCount: 3 },
+        },
+        pile: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }],
+        deckCount: 29,
+        activePlayerId: 'player-3',
+        playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        lastAction: {
+          type: 'play_cards',
+          playerId: 'player-2',
+          playerName: 'Bob',
+          cards: [{ rank: '6', suit: 'diamonds' }],
+          timestamp: new Date().toISOString(),
+        },
+      }
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView })
+      })
+
+      const lastPlayedText = screen.getByTestId('last-played-cards').textContent
+      const lastPlayed = JSON.parse(lastPlayedText!)
+      expect(lastPlayed.playerName).toBe('Bob')
+    })
+
+    it('correctly extracts player 3 name in 3-player game', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      const playerView: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {
+          'player-2': { name: 'Bob', handCount: 4, faceUp: [], faceDownCount: 3 },
+          'player-3': { name: 'Charlie', handCount: 4, faceUp: [], faceDownCount: 3 },
+        },
+        pile: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }, { rank: '7', suit: 'clubs' }],
+        deckCount: 28,
+        activePlayerId: 'player-1',
+        playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        lastAction: {
+          type: 'play_cards',
+          playerId: 'player-3',
+          playerName: 'Charlie',
+          cards: [{ rank: '7', suit: 'clubs' }],
+          timestamp: new Date().toISOString(),
+        },
+      }
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView })
+      })
+
+      const lastPlayedText = screen.getByTestId('last-played-cards').textContent
+      const lastPlayed = JSON.parse(lastPlayedText!)
+      expect(lastPlayed.playerName).toBe('Charlie')
+    })
+
+    it('correctly extracts blow-up player name in 3-player game', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      const playerView: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {
+          'player-2': { name: 'Bob', handCount: 4, faceUp: [], faceDownCount: 3 },
+          'player-3': { name: 'Charlie', handCount: 5, faceUp: [], faceDownCount: 3 },
+        },
+        pile: [],
+        deckCount: 30,
+        activePlayerId: 'player-2', // Player 2 goes again after blow-up
+        playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        lastAction: {
+          type: 'blow_up',
+          playerId: 'player-2',
+          playerName: 'Bob',
+          cards: [{ rank: '10', suit: 'spades' }],
+          blowUpReason: 'ten',
+          timestamp: new Date().toISOString(),
+        },
+      }
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView })
+      })
+
+      const lastPlayedText = screen.getByTestId('last-played-cards').textContent
+      const lastPlayed = JSON.parse(lastPlayedText!)
+      expect(lastPlayed.playerName).toBe('Bob')
+
+      const pileBlownText = screen.getByTestId('pile-blown-info').textContent
+      const pileBlown = JSON.parse(pileBlownText!)
+      expect(pileBlown.playerId).toBe('player-2')
+      expect(pileBlown.reason).toBe('ten')
+    })
+
+    it('correctly extracts pickup player name in 3-player game', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      const playerView: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {
+          'player-2': { name: 'Bob', handCount: 4, faceUp: [], faceDownCount: 3 },
+          'player-3': { name: 'Charlie', handCount: 8, faceUp: [], faceDownCount: 3 }, // Charlie picked up
+        },
+        pile: [],
+        deckCount: 30,
+        activePlayerId: 'player-1', // Turn moves to player 1 after pickup
+        playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        lastAction: {
+          type: 'pickup_pile',
+          playerId: 'player-3',
+          playerName: 'Charlie',
+          pickedUpCount: 3,
+          timestamp: new Date().toISOString(),
+        },
+      }
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView })
+      })
+
+      // pickup_pile doesn't set lastPlayedCards (no cards to display)
+      expect(screen.getByTestId('last-played-cards')).toHaveTextContent('none')
+
+      // But should set pilePickupInfo
+      const pilePickupText = screen.getByTestId('pile-pickup-info').textContent
+      const pilePickup = JSON.parse(pilePickupText!)
+      expect(pilePickup.playerName).toBe('Charlie')
+      expect(pilePickup.playerId).toBe('player-3')
+      expect(pilePickup.cardCount).toBe(3)
+    })
+
+    it('updates player name when different players play sequentially', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      // Turn 1: Alice plays
+      const turn1View: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {},
+        pile: [{ rank: '5', suit: 'hearts' }],
+        deckCount: 30,
+        activePlayerId: 'player-2',
+        playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        lastAction: {
+          type: 'play_cards',
+          playerId: 'player-1',
+          playerName: 'Alice',
+          cards: [{ rank: '5', suit: 'hearts' }],
+          timestamp: new Date().toISOString(),
+        },
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: turn1View })
+      })
+
+      let lastPlayedText = screen.getByTestId('last-played-cards').textContent
+      let lastPlayed = JSON.parse(lastPlayedText!)
+      expect(lastPlayed.playerName).toBe('Alice')
+
+      // Turn 2: Bob plays
+      const turn2View: PlayerView = {
+        ...turn1View,
+        pile: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }],
+        activePlayerId: 'player-3',
+        lastAction: {
+          type: 'play_cards',
+          playerId: 'player-2',
+          playerName: 'Bob',
+          cards: [{ rank: '6', suit: 'diamonds' }],
+          timestamp: new Date().toISOString(),
+        },
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: turn2View })
+      })
+
+      lastPlayedText = screen.getByTestId('last-played-cards').textContent
+      lastPlayed = JSON.parse(lastPlayedText!)
+      expect(lastPlayed.playerName).toBe('Bob')
+
+      // Turn 3: Charlie plays
+      const turn3View: PlayerView = {
+        ...turn2View,
+        pile: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }, { rank: '7', suit: 'clubs' }],
+        activePlayerId: 'player-1',
+        lastAction: {
+          type: 'play_cards',
+          playerId: 'player-3',
+          playerName: 'Charlie',
+          cards: [{ rank: '7', suit: 'clubs' }],
+          timestamp: new Date().toISOString(),
+        },
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: turn3View })
+      })
+
+      lastPlayedText = screen.getByTestId('last-played-cards').textContent
+      lastPlayed = JSON.parse(lastPlayedText!)
+      expect(lastPlayed.playerName).toBe('Charlie')
+    })
+  })
+
   describe('CLEAR actions', () => {
     function DispatchableComponent({
       onMount,
