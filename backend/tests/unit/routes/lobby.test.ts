@@ -2,31 +2,38 @@
  * Unit tests for Lobby routes
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import request from 'supertest';
 import { Express } from 'express';
 import express from 'express';
 import { lobbyRouter } from '../../../src/routes/lobby';
 import { lobbyService } from '../../../src/services/lobbyService';
 import { v4 as uuidv4 } from 'uuid';
+import { setupGlobalMockRedis, resetMockRedis } from '../../testUtils/redisSetup';
+import { redisService } from '../../../src/services/redisService';
 
 describe('Lobby Routes', () => {
   let app: Express;
 
-  beforeEach(() => {
+  beforeAll(async () => {
+    // Set up redis-mock globally before tests
+    await setupGlobalMockRedis();
+  });
+
+  beforeEach(async () => {
     app = express();
     app.use(express.json());
     app.use('/api/lobby', lobbyRouter);
-    lobbyService.clearAll();
+    await resetMockRedis(redisService);
   });
 
-  afterEach(() => {
-    lobbyService.clearAll();
+  afterEach(async () => {
+    await resetMockRedis(redisService);
   });
 
   describe('POST /api/lobby/join', () => {
     it('should reject non-UUID playerId', async () => {
-      const lobby = lobbyService.createLobby();
+      const lobby = await lobbyService.createLobby();
 
       const response = await request(app)
         .post('/api/lobby/join')
@@ -42,7 +49,7 @@ describe('Lobby Routes', () => {
     });
 
     it('should reject empty string as playerId', async () => {
-      const lobby = lobbyService.createLobby();
+      const lobby = await lobbyService.createLobby();
 
       const response = await request(app)
         .post('/api/lobby/join')
@@ -57,7 +64,7 @@ describe('Lobby Routes', () => {
     });
 
     it('should reject malformed UUID', async () => {
-      const lobby = lobbyService.createLobby();
+      const lobby = await lobbyService.createLobby();
 
       const response = await request(app)
         .post('/api/lobby/join')
@@ -72,7 +79,7 @@ describe('Lobby Routes', () => {
     });
 
     it('should accept valid UUID playerId', async () => {
-      const lobby = lobbyService.createLobby();
+      const lobby = await lobbyService.createLobby();
       const validPlayerId = uuidv4();
 
       const response = await request(app)
@@ -89,7 +96,7 @@ describe('Lobby Routes', () => {
     });
 
     it('should reject duplicate playerId', async () => {
-      const lobby = lobbyService.createLobby();
+      const lobby = await lobbyService.createLobby();
       const playerId = uuidv4();
 
       // First join should succeed

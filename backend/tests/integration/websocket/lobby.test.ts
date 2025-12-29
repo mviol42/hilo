@@ -15,17 +15,19 @@ import {
   disconnectSocket,
   waitForEvent,
   cleanupSockets,
+  setTestPort,
   TestSocket,
 } from './helpers';
 import { lobbyService } from '../../../src/services/lobbyService';
 import request from 'supertest';
 
-describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-only mutations)', () => {
+describe('WebSocket Lobby Events', () => {
   let testServer: TestServer;
   let sockets: TestSocket[] = [];
 
   beforeAll(async () => {
     testServer = await createTestServer();
+    setTestPort(testServer.port);
   });
 
   afterAll(async () => {
@@ -38,7 +40,7 @@ describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-onl
     sockets = [];
 
     // Clear lobbies
-    lobbyService.clearAll();
+    await lobbyService.clearAll();
   });
 
   describe('Connection', () => {
@@ -185,6 +187,12 @@ describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-onl
         .send({ lobbyId, playerId: playerId2, playerName: 'Player 2' })
         .expect(200);
 
+      // Mark second player as ready
+      await request(testServer.app)
+        .post('/api/lobby/ready')
+        .send({ lobbyId, playerId: playerId2 })
+        .expect(200);
+
       // Start game
       await request(testServer.app)
         .post('/api/game/start')
@@ -211,7 +219,7 @@ describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-onl
   });
 
   describe('lobby:leave', () => {
-    it('should allow player to leave a lobby', async () => {
+    it('should allow player to leave a lobby via HTTP', async () => {
       // Create lobby
       const response = await request(testServer.app).post('/api/lobby/create').expect(201);
       const { lobbyId } = response.body;
@@ -231,18 +239,18 @@ describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-onl
       socket.emit('lobby:join', { lobbyId, playerId });
       await waitForEvent(socket, 'lobby:playerJoined');
 
-      // Leave lobby
-      socket.emit('lobby:leave', { lobbyId, playerId });
-
-      // Give it time to process
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      // Leave lobby via HTTP (mutations go through HTTP)
+      await request(testServer.app)
+        .post('/api/lobby/leave')
+        .send({ lobbyId, playerId })
+        .expect(200);
 
       // Verify lobby is empty
-      const lobby = lobbyService.getLobbyState(lobbyId);
+      const lobby = await lobbyService.getLobbyState(lobbyId);
       expect(lobby).toBeNull(); // Lobby should be deleted when empty
     });
 
-    it('should notify other players when someone leaves', async () => {
+    it('should notify other players when someone leaves via HTTP', async () => {
       // Create lobby
       const response = await request(testServer.app).post('/api/lobby/create').expect(201);
       const { lobbyId } = response.body;
@@ -273,15 +281,19 @@ describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-onl
       socket2.emit('lobby:join', { lobbyId, playerId: playerId2 });
       await waitForEvent(socket2, 'lobby:playerJoined');
 
-      // Player 2 leaves
+      // Player 2 leaves via HTTP (mutations go through HTTP)
       const leavePromise = waitForEvent(socket1, 'lobby:playerLeft');
-      socket2.emit('lobby:leave', { lobbyId, playerId: playerId2 });
+      await request(testServer.app)
+        .post('/api/lobby/leave')
+        .send({ lobbyId, playerId: playerId2 })
+        .expect(200);
 
-      // Wait briefly
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      const leaveEvent = await leavePromise;
+      expect(leaveEvent.playerId).toBe(playerId2);
+      expect(leaveEvent.lobby.players.length).toBe(1);
     });
 
-    it('should reassign leader when leader leaves', async () => {
+    it('should reassign leader when leader leaves via HTTP', async () => {
       // Create lobby
       const response = await request(testServer.app).post('/api/lobby/create').expect(201);
       const { lobbyId } = response.body;
@@ -312,9 +324,12 @@ describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-onl
       socket2.emit('lobby:join', { lobbyId, playerId: playerId2 });
       await waitForEvent(socket2, 'lobby:playerJoined');
 
-      // Leader (Player 1) leaves
+      // Leader (Player 1) leaves via HTTP (mutations go through HTTP)
       const leaderChangedPromise = waitForEvent(socket2, 'lobby:leaderChanged');
-      socket1.emit('lobby:leave', { lobbyId, playerId: playerId1 });
+      await request(testServer.app)
+        .post('/api/lobby/leave')
+        .send({ lobbyId, playerId: playerId1 })
+        .expect(200);
 
       const leaderChangedEvent = await leaderChangedPromise;
       expect(leaderChangedEvent.newLeaderId).toBe(playerId2);
@@ -322,7 +337,7 @@ describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-onl
   });
 
   describe('disconnect', () => {
-    it('should handle player disconnect by removing from lobby', async () => {
+    it('should keep player in lobby during grace period after disconnect', async () => {
       // Create lobby
       const response = await request(testServer.app).post('/api/lobby/create').expect(201);
       const { lobbyId } = response.body;
@@ -347,48 +362,10 @@ describe.skip('WebSocket Lobby Events (DISABLED - needs refactoring for HTTP-onl
       // Give server time to process disconnect
       await new Promise((resolve) => setTimeout(resolve, 20));
 
-      // Verify lobby is empty (deleted)
-      const lobby = lobbyService.getLobbyState(lobbyId);
-      expect(lobby).toBeNull();
-    });
-
-    it('should notify other players when someone disconnects', async () => {
-      // Create lobby
-      const response = await request(testServer.app).post('/api/lobby/create').expect(201);
-      const { lobbyId } = response.body;
-      const playerId1 = uuidv4();
-      const playerId2 = uuidv4();
-
-      // Join via HTTP first
-      await request(testServer.app)
-        .post('/api/lobby/join')
-        .send({ lobbyId, playerId: playerId1, playerName: 'Player 1' })
-        .expect(200);
-
-      await request(testServer.app)
-        .post('/api/lobby/join')
-        .send({ lobbyId, playerId: playerId2, playerName: 'Player 2' })
-        .expect(200);
-
-      // Two players join via socket
-      const socket1 = createSocketClient();
-      const socket2 = createSocketClient();
-      await connectSocket(socket1);
-      await connectSocket(socket2);
-      sockets.push(socket2); // Keep socket2 for cleanup
-
-      socket1.emit('lobby:join', { lobbyId, playerId: playerId1 });
-      await waitForEvent(socket1, 'lobby:playerJoined');
-
-      socket2.emit('lobby:join', { lobbyId, playerId: playerId2 });
-      await waitForEvent(socket2, 'lobby:playerJoined');
-
-      // Player 1 disconnects
-      const playerLeftPromise = waitForEvent(socket2, 'lobby:playerLeft');
-      await disconnectSocket(socket1);
-
-      const playerLeftEvent = await playerLeftPromise;
-      expect(playerLeftEvent.lobby.players.length).toBe(1);
+      // Player should STILL be in lobby (grace period active)
+      const lobby = await lobbyService.getLobbyState(lobbyId);
+      expect(lobby).not.toBeNull(); // Lobby should still exist
+      expect(lobby?.players).toHaveLength(1); // Player still in lobby
     });
   });
 });

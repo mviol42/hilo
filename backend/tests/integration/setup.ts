@@ -6,6 +6,7 @@ import { Express } from 'express';
 import { Server } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer } from '../../src/server';
+import { createMockRedisService } from '../testUtils/redisSetup';
 
 export const TEST_PORT = 3001;
 
@@ -17,6 +18,11 @@ export interface TestServer {
 }
 
 export async function createTestServer(port?: number): Promise<TestServer> {
+  // Set up redis-mock before creating server
+  const mockRedisService = await createMockRedisService();
+  const redisServiceModule = await import('../../src/services/redisService');
+  Object.assign(redisServiceModule.redisService, mockRedisService);
+
   // Use the actual server setup from src/server.ts
   const { app, server, io } = await createServer();
 

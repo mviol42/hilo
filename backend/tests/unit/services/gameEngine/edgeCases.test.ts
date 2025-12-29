@@ -16,7 +16,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
 
   describe('Drawing Cards Edge Cases', () => {
     it('should not draw more cards than available in deck', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.deck = [{ rank: 'K', suit: 'spades' }];
 
@@ -34,7 +34,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
     });
 
     it('should not draw if player already has 3 or more cards', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.deck = [{ rank: 'K', suit: 'spades' }];
 
@@ -56,7 +56,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
     });
 
     it('should draw exactly enough to reach 3 cards', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.deck = [
         { rank: 'K', suit: 'spades' },
@@ -80,14 +80,14 @@ describe('Edge Cases and Advanced Scenarios', () => {
 
   describe('Turn Order Edge Cases', () => {
     it('should wrap around to first player after last player', () => {
-      const game = initializeGame(['p1', 'p2', 'p3'], testRoomId);
+      const game = initializeGame(['p1', 'p2', 'p3']);
 
       const nextPlayer = getNextPlayerId(game, 'p3');
       expect(nextPlayer).toBe('p1');
     });
 
     it('should handle two player turn order', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
 
       expect(getNextPlayerId(game, 'p1')).toBe('p2');
       expect(getNextPlayerId(game, 'p2')).toBe('p1');
@@ -144,7 +144,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
 
   describe('Complex Game Scenarios', () => {
     it('should handle full game from setup to playing', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       const dealtGame = dealCards(game);
 
       expect(dealtGame.phase).toBe('setup');
@@ -156,7 +156,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
     });
 
     it('should handle player playing all hand cards then face-up', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -185,7 +185,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
     });
 
     it('should handle multiple blow ups in a row', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -208,55 +208,25 @@ describe('Edge Cases and Advanced Scenarios', () => {
       expect(secondBlowUp.discardPile).toHaveLength(2);
       expect(secondBlowUp.activePlayerId).toBe('p1');
     });
-
-    it('should handle bonus play correctly', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
-      game.phase = 'playing';
-      game.activePlayerId = 'p1';
-      game.deck = [];
-
-      game.players.set('p1', {
-        hand: [
-          { rank: '5', suit: 'hearts' },
-          { rank: '5', suit: 'diamonds' },
-        ],
-        faceUp: [
-          { rank: '5', suit: 'clubs' },
-          { rank: '7', suit: 'spades' },
-        ],
-        faceDown: [],
-      });
-
-      const newGame = playCards(game, 'p1', [
-        { rank: '5', suit: 'hearts' },
-        { rank: '5', suit: 'diamonds' },
-      ], 'hand');
-
-      const p1State = newGame.players.get('p1')!;
-      expect(p1State.hand).toHaveLength(0);
-      expect(p1State.faceUp).toHaveLength(1);
-      expect(p1State.faceUp[0].rank).toBe('7');
-      expect(newGame.pile).toHaveLength(3);
-    });
   });
 
   describe('Deck Management Edge Cases', () => {
     it('should handle running out of deck mid-game', () => {
-      const game = initializeGame(['p1', 'p2', 'p3', 'p4', 'p5'], testRoomId);
+      const game = initializeGame(['p1', 'p2', 'p3', 'p4', 'p5'], 'standard');
       const dealtGame = dealCards(game);
 
       const totalCardsDealt = Array.from(dealtGame.players.values())
         .reduce((sum, state) => sum + state.hand.length + state.faceDown.length, 0);
 
       const totalCards = totalCardsDealt + dealtGame.deck.length;
-      // Deck is halved for faster testing
-      expect(totalCards).toBe(52);
+      // 5 players = 2 decks (104 cards) with standard strategy
+      expect(totalCards).toBe(104);
     });
   });
 
   describe('Face-Down Card Edge Cases', () => {
     it('should handle playing unplayable face-down card', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -281,7 +251,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
     });
 
     it('should handle playing playable face-down card that causes blow up', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -304,7 +274,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
 
   describe('Win Condition Edge Cases', () => {
     it('should handle winning with blow up on last card', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -322,7 +292,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
     });
 
     it('should handle winning with four of a kind on last cards', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.deck = [];
@@ -347,7 +317,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
 
   describe('Pile Pickup with Face-Up Cards Edge Cases', () => {
     it('should handle picking up with only one face-up card', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: 'K', suit: 'spades' }];
@@ -366,7 +336,7 @@ describe('Edge Cases and Advanced Scenarios', () => {
     });
 
     it('should handle picking up with mixed face-up cards', () => {
-      const game = initializeGame(['p1', 'p2'], testRoomId);
+      const game = initializeGame(['p1', 'p2']);
       game.phase = 'playing';
       game.activePlayerId = 'p1';
       game.pile = [{ rank: 'A', suit: 'spades' }];

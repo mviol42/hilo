@@ -2,9 +2,9 @@
  * Game state management service
  */
 
-import { GameState, PlayerView } from '@hilo/shared';
+import { GameState, PlayerView, LastAction } from '@hilo/shared';
 import { PlayerId } from '@hilo/shared';
-import { Card } from '@hilo/shared';
+import { Card, DeckStrategy } from '@hilo/shared';
 import {
   initializeGame,
   dealCards,
@@ -18,32 +18,72 @@ import { LobbyId } from '@hilo/shared';
 import { redisService } from './redisService';
 
 export class GameService {
-  private games: Map<string, GameState> = new Map();
-  // Map room ID to current game ID (one active game per room)
-  private roomToGame: Map<LobbyId, string> = new Map();
-  // Map game ID to room ID for reverse lookup
-  private gameToRoom: Map<string, LobbyId> = new Map();
-
   /**
    * Create a new game in a room
    * @param roomId - The room ID (lobbyId from HTTP API serves as room ID)
    * @param playerIds - Array of player IDs in turn order
+   * @param deckStrategy - The deck strategy to use (defaults to 'standard')
    * @returns The initialized game state
    */
-  createGame(roomId: LobbyId, playerIds: PlayerId[]): GameState {
-    const gameState = initializeGame(playerIds, roomId);
+  async createGame(roomId: LobbyId, playerIds: PlayerId[], deckStrategy: DeckStrategy = 'standard'): Promise<GameState> {
+    const gameState = initializeGame(playerIds, deckStrategy);
     const dealtState = dealCards(gameState);
 
-    this.games.set(dealtState.id, dealtState);
-    this.roomToGame.set(roomId, dealtState.id);
-    this.gameToRoom.set(dealtState.id, roomId);
+    console.log(`[GameService] Creating game - roomId: ${roomId.substring(0, 8)}, gameId: ${dealtState.id}, strategy: ${deckStrategy}`);
 
-    // Persist to Redis (non-blocking)
-    redisService.saveGameState(dealtState).catch((err) => {
-      console.error('[GameService] Failed to persist game state to Redis:', err);
-    });
+    // Save to Redis as source of truth
+    await redisService.saveGameState(dealtState);
+
+    // Save room-to-game and game-to-room mappings
+    await this.saveRoomMapping(roomId, dealtState.id);
 
     return dealtState;
+  }
+
+  /**
+   * Save room-to-game mapping in Redis
+   */
+  private async saveRoomMapping(roomId: LobbyId, gameId: string): Promise<void> {
+    if (!redisService.isAvailable()) return;
+
+    try {
+      const client = redisService.getClient();
+      await client.set(`hilo:room:${roomId}:game`, gameId);
+      await client.set(`hilo:game:${gameId}:room`, roomId);
+    } catch (error) {
+      console.error('[GameService] Failed to save room mapping:', error);
+    }
+  }
+
+  /**
+   * Get game ID from room ID
+   */
+  private async getGameIdByRoom(roomId: LobbyId): Promise<string | null> {
+    if (!redisService.isAvailable()) return null;
+
+    try {
+      const client = redisService.getClient();
+      return await client.get(`hilo:room:${roomId}:game`);
+    } catch (error) {
+      console.error('[GameService] Failed to get game ID by room:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get room ID from game ID
+   */
+  private async getRoomIdByGameId(gameId: string): Promise<LobbyId | null> {
+    if (!redisService.isAvailable()) return null;
+
+    try {
+      const client = redisService.getClient();
+      const roomId = await client.get(`hilo:game:${gameId}:room`);
+      return roomId as LobbyId | null;
+    } catch (error) {
+      console.error('[GameService] Failed to get room ID by game:', error);
+      return null;
+    }
   }
 
   /**
@@ -51,8 +91,10 @@ export class GameService {
    * @param gameId - The game ID
    * @returns The game state or null if not found
    */
-  getGame(gameId: string): GameState | null {
-    return this.games.get(gameId) || null;
+  async getGame(gameId: string): Promise<GameState | null> {
+    const gameState = await redisService.getGameState(gameId);
+    console.log(`[GameService] getGame - gameId: ${gameId.substring(0, 20)}..., found: ${gameState !== null}`);
+    return gameState;
   }
 
   /**
@@ -60,12 +102,12 @@ export class GameService {
    * @param roomId - The room ID
    * @returns The game state or null if not found
    */
-  getGameByRoom(roomId: LobbyId): GameState | null {
-    const gameId = this.roomToGame.get(roomId);
+  async getGameByRoom(roomId: LobbyId): Promise<GameState | null> {
+    const gameId = await this.getGameIdByRoom(roomId);
     if (!gameId) {
       return null;
     }
-    return this.getGame(gameId);
+    return await this.getGame(gameId);
   }
 
   /**
@@ -73,25 +115,31 @@ export class GameService {
    * @param gameId - The game ID
    * @param gameState - The updated game state
    */
-  updateGame(gameId: string, gameState: GameState): void {
-    this.games.set(gameId, gameState);
-
-    // Persist to Redis (non-blocking)
-    redisService.saveGameState(gameState).catch((err) => {
-      console.error('[GameService] Failed to persist game state to Redis:', err);
-    });
+  async updateGame(gameId: string, gameState: GameState): Promise<void> {
+    await redisService.saveGameState(gameState);
   }
 
   /**
    * Remove a game
    * @param gameId - The game ID
    */
-  removeGame(gameId: string): void {
-    const roomId = this.gameToRoom.get(gameId);
-    this.games.delete(gameId);
-    this.gameToRoom.delete(gameId);
-    if (roomId) {
-      this.roomToGame.delete(roomId);
+  async removeGame(gameId: string): Promise<void> {
+    const roomId = await this.getRoomIdByGameId(gameId);
+
+    // Delete game state from Redis
+    await redisService.deleteGame(gameId);
+
+    // Delete mappings
+    if (redisService.isAvailable()) {
+      try {
+        const client = redisService.getClient();
+        await client.del(`hilo:game:${gameId}:room`);
+        if (roomId) {
+          await client.del(`hilo:room:${roomId}:game`);
+        }
+      } catch (error) {
+        console.error('[GameService] Failed to delete game mappings:', error);
+      }
     }
   }
 
@@ -100,8 +148,8 @@ export class GameService {
    * @param gameId - The game ID
    * @returns The room ID or null if not found
    */
-  getRoomIdFromGame(gameId: string): LobbyId | null {
-    return this.gameToRoom.get(gameId) || null;
+  async getRoomIdFromGame(gameId: string): Promise<LobbyId | null> {
+    return await this.getRoomIdByGameId(gameId);
   }
 
   /**
@@ -110,8 +158,8 @@ export class GameService {
    * @param playerId - The player ID requesting the view
    * @returns PlayerView with hidden information filtered
    */
-  getPlayerView(gameId: string, playerId: PlayerId): PlayerView | null {
-    const game = this.getGame(gameId);
+  async getPlayerView(gameId: string, playerId: PlayerId): Promise<PlayerView | null> {
+    const game = await this.getGame(gameId);
     if (!game) {
       return null;
     }
@@ -121,15 +169,28 @@ export class GameService {
       return null;
     }
 
+    // Get lobby to fetch player names
+    const lobbyId = await this.getRoomIdByGameId(gameId);
+    const lobby = lobbyId ? await redisService.getLobby(lobbyId) : null;
+
+    // Build player names map
+    const playerNames: { [playerId: string]: string } = {};
+    if (lobby) {
+      for (const [pid, player] of lobby.players) {
+        playerNames[pid] = player.name;
+      }
+    }
+
     // Build other players object
-    const otherPlayers: { [playerId: string]: { handCount: number; faceUp: Card[]; faceDownCount: number } } = {};
+    const otherPlayers: { [playerId: string]: { name: string; handCount: number; faceUp: Card[]; faceDownCount: number } } = {};
 
     for (const [pid, pState] of game.players) {
       if (pid !== playerId) {
         otherPlayers[pid] = {
+          name: playerNames[pid] || `Player ${pid.substring(0, 8)}`,
           handCount: pState.hand.length,
           faceUp: pState.faceUp,
-          faceDownCount: pState.faceDown.length,
+          faceDownCount: pState.faceDown.filter(card => card !== null).length,
         };
       }
     }
@@ -142,7 +203,7 @@ export class GameService {
       phase: game.phase,
       myHand: playerState.hand,
       myFaceUp: playerState.faceUp,
-      myFaceDownCount: playerState.faceDown.length,
+      myFaceDownCount: playerState.faceDown.filter(card => card !== null).length,
       myFaceDownPlayed: playerState.faceDown.map(card => card === null),
       otherPlayers,
       pile: game.pile,
@@ -150,6 +211,9 @@ export class GameService {
       activePlayerId: game.activePlayerId,
       playableCards,
       winner: game.winner,
+      winnerName: game.winner ? playerNames[game.winner] : undefined,
+      playerNames,
+      lastAction: game.lastAction,
     };
   }
 
@@ -185,17 +249,32 @@ export class GameService {
    * Handle player selecting face-up cards during setup
    * @param gameId - The game ID
    * @param playerId - The player ID
+   * @param playerName - The player's display name
    * @param cardIndices - Indices of cards to select as face-up
    * @returns Updated game state
    */
-  selectFaceUp(gameId: string, playerId: PlayerId, cardIndices: number[]): GameState {
-    const game = this.getGame(gameId);
+  async selectFaceUp(gameId: string, playerId: PlayerId, playerName: string, cardIndices: number[]): Promise<GameState> {
+    const game = await this.getGame(gameId);
     if (!game) {
       throw new Error('Game not found');
     }
 
     const updatedGame = selectFaceUpCards(game, playerId, cardIndices);
-    this.updateGame(gameId, updatedGame);
+
+    // Get the selected cards for lastAction
+    const playerState = updatedGame.players.get(playerId);
+    const selectedCards = playerState?.faceUp || [];
+
+    // Set lastAction
+    updatedGame.lastAction = {
+      type: 'select_faceup',
+      playerId,
+      playerName,
+      cards: selectedCards,
+      timestamp: new Date().toISOString(),
+    };
+
+    await this.updateGame(gameId, updatedGame);
 
     return updatedGame;
   }
@@ -205,8 +284,8 @@ export class GameService {
    * @param gameId - The game ID
    * @returns true if all players ready
    */
-  allPlayersReady(gameId: string): boolean {
-    const game = this.getGame(gameId);
+  async allPlayersReady(gameId: string): Promise<boolean> {
+    const game = await this.getGame(gameId);
     if (!game) {
       return false;
     }
@@ -225,14 +304,14 @@ export class GameService {
    * @param gameId - The game ID
    * @returns Updated game state
    */
-  startGamePlay(gameId: string): GameState {
-    const game = this.getGame(gameId);
+  async startGamePlay(gameId: string): Promise<GameState> {
+    const game = await this.getGame(gameId);
     if (!game) {
       throw new Error('Game not found');
     }
 
     const updatedGame = startGame(game);
-    this.updateGame(gameId, updatedGame);
+    await this.updateGame(gameId, updatedGame);
 
     return updatedGame;
   }
@@ -241,17 +320,19 @@ export class GameService {
    * Play cards from hand, face-up, or face-down
    * @param gameId - The game ID
    * @param playerId - The player ID
+   * @param playerName - The player's display name
    * @param cards - The cards to play
    * @param faceDownIndex - Index of facedown card to play (if playing facedown)
    * @returns Updated game state and metadata about the action
    */
-  playCardsAction(
+  async playCardsAction(
     gameId: string,
     playerId: PlayerId,
+    playerName: string,
     cards: Card[],
     providedFaceDownIndex?: number
-  ): { gameState: GameState; blowUp: boolean; winner: boolean; cardsPlayed: Card[] } {
-    const game = this.getGame(gameId);
+  ): Promise<{ gameState: GameState; blowUp: boolean; winner: boolean; cardsPlayed: Card[]; pickedUpPile: boolean }> {
+    const game = await this.getGame(gameId);
     if (!game) {
       throw new Error('Game not found');
     }
@@ -284,32 +365,70 @@ export class GameService {
     }
 
     const oldPileLength = game.pile.length;
+    const oldPlayerHandSize = playerState.hand.length;
     const updatedGame = playCards(game, playerId, cards, source, faceDownIndex);
-    this.updateGame(gameId, updatedGame);
 
-    // Check if blow-up occurred (pile cleared)
-    const blowUp = updatedGame.pile.length === 0 && oldPileLength > 0;
+    // Check if player picked up the pile (hand size increased significantly)
+    const updatedPlayerState = updatedGame.players.get(playerId);
+    const newHandSize = updatedPlayerState?.hand.length ?? 0;
+    const pickedUpPile = newHandSize > oldPlayerHandSize + 1;
+
+    // Check if blow-up occurred (pile cleared and cards were on pile, but NOT from pickup)
+    const blowUp = !pickedUpPile && updatedGame.pile.length === 0 && oldPileLength > 0;
+
+    // Set lastAction on the game state
+    // pickedUpPile takes precedence: if player picked up pile, it's not a blow-up
+    const lastAction: LastAction = {
+      type: pickedUpPile ? 'pickup_pile' : blowUp ? 'blow_up' : 'play_cards',
+      playerId,
+      playerName,
+      cards: actualCardsPlayed,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (blowUp) {
+      lastAction.blowUpReason = actualCardsPlayed[0]?.rank === '10' ? 'ten' : 'four_of_kind';
+    }
+
+    if (pickedUpPile) {
+      lastAction.pickedUpCount = newHandSize - oldPlayerHandSize;
+    }
+
+    updatedGame.lastAction = lastAction;
+    await this.updateGame(gameId, updatedGame);
 
     // Check if player won
     const winner = updatedGame.phase === 'ended' && updatedGame.winner === playerId;
 
-    return { gameState: updatedGame, blowUp, winner, cardsPlayed: actualCardsPlayed };
+    return { gameState: updatedGame, blowUp, winner, cardsPlayed: actualCardsPlayed, pickedUpPile };
   }
 
   /**
    * Pick up the pile
    * @param gameId - The game ID
    * @param playerId - The player ID
+   * @param playerName - The player's display name
    * @returns Updated game state
    */
-  pickUpPileAction(gameId: string, playerId: PlayerId): GameState {
-    const game = this.getGame(gameId);
+  async pickUpPileAction(gameId: string, playerId: PlayerId, playerName: string): Promise<GameState> {
+    const game = await this.getGame(gameId);
     if (!game) {
       throw new Error('Game not found');
     }
 
+    const pileCount = game.pile.length;
     const updatedGame = pickupPile(game, playerId);
-    this.updateGame(gameId, updatedGame);
+
+    // Set lastAction
+    updatedGame.lastAction = {
+      type: 'pickup_pile',
+      playerId,
+      playerName,
+      pickedUpCount: pileCount,
+      timestamp: new Date().toISOString(),
+    };
+
+    await this.updateGame(gameId, updatedGame);
 
     return updatedGame;
   }
@@ -317,10 +436,11 @@ export class GameService {
   /**
    * Clear all games (for testing)
    */
-  clearAll(): void {
-    this.games.clear();
-    this.roomToGame.clear();
-    this.gameToRoom.clear();
+  async clearAll(): Promise<void> {
+    // Note: This will only clear games from Redis if it's available
+    // In tests with redis-mock, this should work fine
+    // For production, you might want to implement a scan/delete pattern
+    console.warn('[GameService] clearAll() does not delete Redis data - for testing with mock only');
   }
 }
 

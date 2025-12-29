@@ -5,9 +5,15 @@
 import { LobbyId, LobbyState } from './lobby';
 import { PlayerId } from './player';
 import { GameState, PlayerView } from './game';
-import { Card } from './card';
+import { Card, DeckStrategy } from './card';
 
 // Lobby endpoints
+
+export interface LobbyStatusResponse {
+  exists: boolean;
+  gameStarted: boolean;
+  playerCount: number;
+}
 
 export interface CreateLobbyResponse {
   lobbyId: LobbyId;
@@ -49,6 +55,7 @@ export interface ReadyLobbyResponse {
 export interface StartGameRequest {
   lobbyId: LobbyId;
   playerId: PlayerId;
+  deckStrategy?: DeckStrategy; // Defaults to 'standard' if not provided
 }
 
 export interface StartGameResponse {
@@ -79,6 +86,8 @@ export interface PlayCardsResponse {
   gameState: PlayerView;
   blowUp: boolean;
   winner: boolean;
+  cardsPlayed: Card[]; // The actual cards that were played (useful for revealing face-down cards)
+  pickedUpPile?: boolean; // True if the player picked up the pile (e.g., face-down card wasn't playable)
 }
 
 export interface PickUpPileRequest {

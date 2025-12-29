@@ -1,14 +1,17 @@
-Refer to backend-design.md to view the JSON schema. Each time a play is made, a new game state JSON is passed to the frontend. Refer to hilo-rules.md for game rules.
+# Constraints:
+* Written in typescript, to share common type definitions between frontend and backend.
+
+Receives the state from the backend and renders it for the user. Refer to backend-design.md to view the JSON schema. Each time a play is made, a new game state JSON is passed to the frontend. Refer to hilo-rules.md for game rules.
 
 The user begins their journey on the LANDING PAGE.
 
-### LANDING PAGE 
+# LANDING PAGE 
 - When a user goes to the LANDING PAGE, they are presented with two buttons - “Create Lobby” and “Join Lobby”
 - Create lobby. This has a button titled “Create Lobby”. This sends an HTTP post request to the backend which expects to get back a UUID. The user is taken to the LOBBY PAGE with URL corresponding with the game UUID being passed through URL parameters (i.e. localhost:8000/gameid=asdflkj). The first person to join this room is called the LEADER.
 - Join lobby. There is a text input box with the default text “Enter room id…”. Immediately next to it, there is a button titled “Join”. This text box is meant to accept room ids corresponding to rooms which get sent to the backend with via HTTP post. If an error is returned, that error should be displayed in red text underneath the input box.
 - Once a user has successfully done one of these actions, they proceed to the LOBBY PAGE.
 
-### LOBBY PAGE
+# LOBBY PAGE
 - Copy link - There is a button called “Copy link” which copies the link corresponding with the correct url parameter.
 - The LEADER has the option to click “Begin Game” which starts the game.
 - Each joining player has copy link and waiting bar. 
@@ -20,7 +23,7 @@ The user begins their journey on the LANDING PAGE.
     - An initial game state, represented by a JSON containing a map of player id to a set of cards is returned.
     -  Any other player who tries to join this game gets a separate “spectator” screen where they can view all cards visible to any player (FACEUP PILE and HAND).
 
-### GAME PAGE
+# GAME PAGE
 - There are a few key zones in the GAME PAGE. The HAND, the FACEUP PILE, and the FACEDOWN PILE.
 - First, the HAND design. A player's HAND is displayed on the bottom of of the screen. It should take up 1/10 of the screen. The HAND can be quite large, so if the number of cards would overflow outsite the screen, a scroll wheel should emerge. The HAND should be sorted first in order of rank. i.e. 2, then 3, then 4, and so on.
 - In the SETUP phase, the 6 remaining cards should start in the HAND. They should all be selectable. Above them, there should be 3 card slots and a greyed out confirm button. When a card is selected, it should move that card to one of the free card slots. When all 3 slots are full, the cards in HAND shouldn't be selectable. Cards in the slots should always be selectable, and when clicked return to hand. When all 3 slots are full, the confirm button becomes blue and clickable.

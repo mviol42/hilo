@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(npx --yes tailwindcss init -p)",
+      "Bash(npm run build:*)",
+      "Bash(cat:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(npm run lint:*)",
+      "Bash(ls:*)",
+      "Bash(npm test:*)",
+      "Bash(npx tsc --noEmit)",
+      "mcp__ide__getDiagnostics",
+      "Bash(docker compose build:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker build:*)",
+      "Bash(chmod:*)",
+      "Bash(docker:*)",
+      "Bash(docker version:*)",
+      "Skill(context7)",
+      "Bash(docker-compose:*)",
+      "Bash(tee:*)",
+      "Bash(pkill:*)",
+      "Bash(git stash:*)",
+      "Bash(npm run test:integration:*)",
+      "Skill(backend-unit-testing)",
+      "Skill(backend-integration-testing)",
+      "Bash(npm run test:all:*)",
+      "Bash(npm run test:unit:*)",
+      "Bash(npm run:*)",
+      "Bash(npx vitest:*)",
+      "WebSearch",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
+    ]
+  }
+}

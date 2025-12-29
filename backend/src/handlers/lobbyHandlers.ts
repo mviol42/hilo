@@ -14,6 +14,7 @@ import {
 import { LobbyId, PlayerId } from '@hilo/shared';
 import { lobbyService } from '../services/lobbyService';
 import { redisService } from '../services/redisService';
+import { cancelPendingDeletion, scheduleLobbyCleanup } from './lobbyCleanup';
 
 export type TypedServer = Server<ClientToServerEvents, ServerToClientEvents>;
 export type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -45,7 +46,7 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
       const roomId = lobbyId; // lobbyId serves as the permanent room ID
 
       // Get the lobby
-      const lobby = lobbyService.getLobby(lobbyId);
+      const lobby = await lobbyService.getLobby(lobbyId);
       if (!lobby) {
         throw new Error('Lobby not found');
       }
@@ -56,8 +57,11 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
         throw new Error('Player not found in lobby');
       }
 
+      // Cancel any pending deletion for this player (they're reconnecting)
+      cancelPendingDeletion(lobbyId, playerId);
+
       // Update socket ID for the existing player
-      lobbyService.updateSocketId(lobbyId, playerId, socket.id);
+      await lobbyService.updateSocketId(lobbyId, playerId, socket.id);
 
       // Store in socket data
       (socket.data as SocketData).playerId = playerId;
@@ -76,11 +80,15 @@ function handleLobbyJoin(io: TypedServer, socket: TypedSocket) {
       // Join Socket.IO room (room persists across lobby and game states)
       await socket.join(roomId);
 
+      console.log(`[LobbyHandlers] Player ${playerId.substring(0, 8)} joined lobby ${lobbyId.substring(0, 8)}, socket: ${socket.id}`);
+
       // Get updated lobby state
-      const lobbyState = lobbyService.getLobbyState(lobbyId);
+      const lobbyState = await lobbyService.getLobbyState(lobbyId);
       if (!lobbyState) {
         throw new Error('Lobby not found after join');
       }
+
+      console.log(`[LobbyHandlers] Lobby state after join - players: ${lobbyState.players.map(p => p.id.substring(0, 8)).join(', ')}`);
 
       // Notify all players in the room (including this socket)
       io.to(roomId).emit('lobby:playerJoined', {
@@ -126,6 +134,10 @@ function handleLobbyLeave(_io: TypedServer, socket: TypedSocket) {
 
 /**
  * Handle socket disconnection
+ *
+ * Behavior depends on lobby state:
+ * - WAITING: Remove player from lobby (they can rejoin via join flow)
+ * - IN_GAME: Keep player in lobby so they can reconnect and rejoin the game
  */
 function handleDisconnect(io: TypedServer, socket: TypedSocket) {
   return async () => {
@@ -133,46 +145,30 @@ function handleDisconnect(io: TypedServer, socket: TypedSocket) {
       const socketData = socket.data as SocketData;
       const { playerId, lobbyId } = socketData;
 
-      // If player was in a lobby/room, handle leave
-      if (playerId && lobbyId) {
-        const roomId = lobbyId; // lobbyId serves as the permanent room ID
-        const lobbyBefore = lobbyService.getLobby(lobbyId);
-        if (!lobbyBefore) {
-          return; // Lobby already gone
-        }
-
-        const wasLeader = lobbyBefore.leaderId === playerId;
-        const oldLeaderId = lobbyBefore.leaderId;
-
-        // Leave the lobby
-        lobbyService.leaveLobby(lobbyId, playerId);
-
-        // Clear session from Redis
-        redisService.clearPlayerSession(playerId).catch((err) => {
-          console.error('[LobbyHandlers] Failed to clear session on disconnect:', err);
-        });
-
-        // Get updated lobby state
-        const lobbyAfter = lobbyService.getLobbyState(lobbyId);
-
-        if (lobbyAfter) {
-          // Notify remaining players in room
-          io.to(roomId).emit('lobby:playerLeft', {
-            playerId,
-            lobby: lobbyAfter,
-          });
-
-          // If leader changed, notify players
-          if (wasLeader && lobbyAfter.leaderId !== oldLeaderId) {
-            io.to(roomId).emit('lobby:leaderChanged', {
-              newLeaderId: lobbyAfter.leaderId,
-              lobby: lobbyAfter,
-            });
-          }
-        }
+      if (!playerId || !lobbyId) {
+        return;
       }
+
+      const lobby = await lobbyService.getLobby(lobbyId);
+      if (!lobby) {
+        return; // Lobby already gone
+      }
+
+      console.log(`[LobbyHandlers] Player ${playerId.substring(0, 8)} disconnected from lobby ${lobbyId.substring(0, 8)}, status: ${lobby.status}`);
+
+      // If game is in progress, keep the player so they can reconnect
+      if (lobby.status === 'in_game') {
+        console.log(`[LobbyHandlers] Game in progress, keeping player for potential rejoin`);
+        return;
+      }
+
+      // If in waiting/lobby state, schedule cleanup with grace period
+      const wasLeader = lobby.leaderId === playerId;
+      const oldLeaderId = lobby.leaderId;
+
+      // Schedule delayed cleanup to allow quick reconnections
+      scheduleLobbyCleanup(io, lobbyId, playerId, wasLeader, oldLeaderId);
     } catch (error) {
-      // Log error but don't emit to disconnected socket
       console.error('Error handling disconnect:', error);
     }
   };
