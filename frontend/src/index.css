@@ -79,6 +79,15 @@
   }
 }
 
+@keyframes card-spin-slow {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
 @layer utilities {
   .animate-pulse-green {
     animation: pulse-green 4s ease-in-out infinite;
@@ -106,5 +115,9 @@
 
   .animate-card-to-hand {
     animation: card-to-hand 0.5s ease-out forwards;
+  }
+
+  .animate-card-spin-slow {
+    animation: card-spin-slow 4s linear infinite;
   }
 }

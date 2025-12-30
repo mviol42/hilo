@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import type { Card as CardType } from '@hilo/shared'
 import { apiClient } from '@/services/api'
@@ -250,8 +250,35 @@ export function GamePage() {
   const hasSelectedFaceUp = gameState.myFaceUp.length === 3
   const isGameEnded = gameState.phase === 'ended'
 
+  // Winning card phrases - randomly selected when game ends
+  const winningCardPhrases = [
+    'The final blow:',
+    'The winning card:',
+    'Victory was sealed by:',
+    'The card that ended it all:',
+    'The knockout punch:',
+    'This card sealed the deal:',
+    'The finishing move:',
+    'The card that made history:',
+    'The game-ender:',
+    'The coup de grâce:',
+    'This card clinched the win:',
+    'The death blow:',
+    'The card that brought the house down:',
+    'The nail in the coffin:',
+    'The winning strike:',
+    'This card closed the show:',
+  ]
+
+  const winningCardPhrase = useMemo(() => {
+    return winningCardPhrases[Math.floor(Math.random() * winningCardPhrases.length)]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGameEnded])
+
   // GAME ENDED
   if (isGameEnded) {
+    const winningCard = gameState.lastAction?.cards?.[0]
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white flex items-center justify-center">
         <div className="text-center">
@@ -259,9 +286,19 @@ export function GamePage() {
             {gameState.winner === playerId ? '🎉 You Won!' : 'Game Over'}
           </h1>
           {gameState.winner && gameState.winner !== playerId && (
-            <p className="text-2xl text-gray-300 mb-8">
+            <p className="text-2xl text-gray-300 mb-4">
               {gameState.winnerName || `Player ${gameState.winner.substring(0, 8)}`} won!
             </p>
+          )}
+          {winningCard && (
+            <div className="my-8">
+              <p className="text-gray-400 mb-4">{winningCardPhrase}</p>
+              <div className="flex justify-center" style={{ perspective: '1000px' }}>
+                <div className="animate-card-spin-slow" style={{ transformStyle: 'preserve-3d' }}>
+                  <Card card={winningCard} size="large" />
+                </div>
+              </div>
+            </div>
           )}
           <Button onClick={() => navigate('/')} variant="primary" size="large">
             Return to Menu
