@@ -214,7 +214,7 @@ describe('Game Won Screen', () => {
     expect(screen.getByText(/You Won!/i)).toBeInTheDocument()
   })
 
-  it('shows return to menu button', async () => {
+  it('shows back to menu button', async () => {
     const endedState: PlayerView = {
       id: 'game-123',
       phase: 'ended',
@@ -246,7 +246,43 @@ describe('Game Won Screen', () => {
     }
 
     await waitFor(() => {
-      expect(screen.getByText(/Return to Menu/i)).toBeInTheDocument()
+      expect(screen.getByText(/Back to Menu/i)).toBeInTheDocument()
+    })
+  })
+
+  it('shows play again button', async () => {
+    const endedState: PlayerView = {
+      id: 'game-123',
+      phase: 'ended',
+      myHand: [],
+      myFaceUp: [],
+      myFaceDownCount: 0,
+      myFaceDownPlayed: [true, true, true],
+      otherPlayers: {},
+      pile: [],
+      deckCount: 0,
+      activePlayerId: 'player-1',
+      winner: 'player-1',
+      winnerName: 'Player 1',
+      playerNames: { 'player-1': 'Player 1' },
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/game?id=game-123']}>
+        <AppProviders>
+          <Routes>
+            <Route path="/game" element={<GamePage />} />
+          </Routes>
+        </AppProviders>
+      </MemoryRouter>
+    )
+
+    if (gameStateUpdateCallback) {
+      gameStateUpdateCallback({ gameState: endedState })
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText(/Play Again/i)).toBeInTheDocument()
     })
   })
 })

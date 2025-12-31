@@ -273,6 +273,23 @@ export function GamePage() {
   const hasSelectedFaceUp = gameState.myFaceUp.length === 3
   const isGameEnded = gameState.phase === 'ended'
 
+  // Handle Play Again
+  const handlePlayAgain = async () => {
+    if (!gameId) return
+
+    try {
+      setIsLoading(true)
+      const response = await apiClient.playAgain({ gameId })
+      // Navigate to join page with the new lobby ID
+      navigate(`/join?id=${response.lobbyId}`)
+    } catch (error: any) {
+      console.error('Failed to create play again lobby:', error)
+      showToast(error.response?.data?.message || 'Failed to create new game', 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   // GAME ENDED
   if (isGameEnded) {
     const winningCard = gameState.lastAction?.cards?.[0]
@@ -298,9 +315,14 @@ export function GamePage() {
               </div>
             </div>
           )}
-          <Button onClick={() => navigate('/')} variant="primary" size="large">
-            Return to Menu
-          </Button>
+          <div className="flex flex-col gap-3">
+            <Button onClick={handlePlayAgain} variant="success" size="large">
+              Play Again
+            </Button>
+            <Button onClick={() => navigate('/')} variant="primary" size="large">
+              Back to Menu
+            </Button>
+          </div>
         </div>
       </div>
     )

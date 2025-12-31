@@ -99,6 +99,16 @@ export interface PickUpPileResponse {
   gameState: PlayerView;
 }
 
+// Play again endpoint
+
+export interface PlayAgainRequest {
+  gameId: string;
+}
+
+export interface PlayAgainResponse {
+  lobbyId: LobbyId;
+}
+
 // Error responses
 
 export interface ErrorResponse {

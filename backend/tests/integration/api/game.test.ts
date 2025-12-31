@@ -9,7 +9,8 @@ import { Server } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import { createTestServer, closeTestServer, TestServer } from '../setup';
 import { lobbyService } from '../../../src/services/lobbyService';
-import { StartGameResponse } from '@hilo/shared';
+import { gameService } from '../../../src/services/gameService';
+import { StartGameResponse, PlayAgainResponse } from '@hilo/shared';
 
 describe('Game API', () => {
   let testServer: TestServer;
@@ -283,6 +284,189 @@ describe('Game API', () => {
 
       expect(response.body).toHaveProperty('error');
       expect(response.body.message).toContain('already started');
+    });
+  });
+
+  describe('POST /api/game/play-again', () => {
+    /**
+     * Helper to create a game that has ended
+     */
+    async function createEndedGame(): Promise<{ gameId: string; lobbyId: string; playerId1: string; playerId2: string }> {
+      // Create lobby
+      const createResponse = await request(app)
+        .post('/api/lobby/create')
+        .expect(201);
+
+      const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
+
+      // Join players
+      await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
+        .expect(200);
+
+      await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
+        .expect(200);
+
+      // Ready player 2
+      await request(app)
+        .post('/api/lobby/ready')
+        .send({ lobbyId, playerId: playerId2 })
+        .expect(200);
+
+      // Start game
+      const startResponse = await request(app)
+        .post('/api/game/start')
+        .send({ lobbyId, playerId: playerId1 })
+        .expect(200);
+
+      const gameId = startResponse.body.gameState.id;
+
+      // Manually set game to ended state for testing
+      const game = await gameService.getGame(gameId);
+      if (game) {
+        game.phase = 'ended';
+        game.winner = playerId1;
+        await gameService.updateGame(gameId, game);
+      }
+
+      return { gameId, lobbyId, playerId1, playerId2 };
+    }
+
+    it('should create a new lobby for play again', async () => {
+      const { gameId } = await createEndedGame();
+
+      const response = await request(app)
+        .post('/api/game/play-again')
+        .send({ gameId })
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      const body = response.body as PlayAgainResponse;
+
+      expect(body.lobbyId).toBeDefined();
+      expect(body.lobbyId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+
+      // Verify the lobby exists
+      const lobby = await lobbyService.getLobby(body.lobbyId);
+      expect(lobby).not.toBeNull();
+      expect(lobby?.status).toBe('waiting');
+    });
+
+    it('should return the same lobby ID for multiple play-again requests', async () => {
+      const { gameId } = await createEndedGame();
+
+      // First request
+      const response1 = await request(app)
+        .post('/api/game/play-again')
+        .send({ gameId })
+        .expect(200);
+
+      // Second request
+      const response2 = await request(app)
+        .post('/api/game/play-again')
+        .send({ gameId })
+        .expect(200);
+
+      // Should get the same lobby ID (idempotent)
+      expect(response1.body.lobbyId).toBe(response2.body.lobbyId);
+    });
+
+    it('should return 400 if gameId is missing', async () => {
+      const response = await request(app)
+        .post('/api/game/play-again')
+        .send({})
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.message).toContain('gameId is required');
+    });
+
+    it('should return 404 for non-existent game', async () => {
+      const response = await request(app)
+        .post('/api/game/play-again')
+        .send({ gameId: 'non-existent-game-id' })
+        .expect(404);
+
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.message).toContain('Game not found');
+    });
+
+    it('should return 400 if game has not ended', async () => {
+      // Create a game that is still in progress
+      const createResponse = await request(app)
+        .post('/api/lobby/create')
+        .expect(201);
+
+      const lobbyId = createResponse.body.lobbyId;
+      const playerId1 = uuidv4();
+      const playerId2 = uuidv4();
+
+      await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId1, playerName: 'Alice' })
+        .expect(200);
+
+      await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId, playerId: playerId2, playerName: 'Bob' })
+        .expect(200);
+
+      await request(app)
+        .post('/api/lobby/ready')
+        .send({ lobbyId, playerId: playerId2 })
+        .expect(200);
+
+      const startResponse = await request(app)
+        .post('/api/game/start')
+        .send({ lobbyId, playerId: playerId1 })
+        .expect(200);
+
+      const gameId = startResponse.body.gameState.id;
+
+      // Try to play again while game is still in setup phase
+      const response = await request(app)
+        .post('/api/game/play-again')
+        .send({ gameId })
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.message).toContain('Game has not ended yet');
+    });
+
+    it('should allow players to join the play-again lobby', async () => {
+      const { gameId, playerId1, playerId2 } = await createEndedGame();
+
+      // Get the play-again lobby
+      const response = await request(app)
+        .post('/api/game/play-again')
+        .send({ gameId })
+        .expect(200);
+
+      const newLobbyId = response.body.lobbyId;
+
+      // Players can join the new lobby
+      const joinResponse1 = await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId: newLobbyId, playerId: playerId1, playerName: 'Alice' })
+        .expect(200);
+
+      expect(joinResponse1.body.isLeader).toBe(true); // First to join becomes leader
+
+      const joinResponse2 = await request(app)
+        .post('/api/lobby/join')
+        .send({ lobbyId: newLobbyId, playerId: playerId2, playerName: 'Bob' })
+        .expect(200);
+
+      expect(joinResponse2.body.isLeader).toBe(false);
+
+      // Verify lobby has both players
+      const lobby = await lobbyService.getLobby(newLobbyId);
+      expect(lobby?.players.size).toBe(2);
     });
   });
 });

@@ -16,6 +16,8 @@ import {
   PlayCardsResponse,
   PickUpPileRequest,
   PickUpPileResponse,
+  PlayAgainRequest,
+  PlayAgainResponse,
   PlayerId,
   GameLogEntry,
 } from '@hilo/shared';
@@ -442,6 +444,53 @@ gameRouter.post('/pickup-pile', async (req: Request, res: Response) => {
     res.status(200).json(response);
   } catch (error) {
     console.error('Error picking up pile:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/game/play-again
+ * Get or create a lobby for rematch after game ends
+ */
+gameRouter.post('/play-again', async (req: Request, res: Response) => {
+  try {
+    const { gameId } = req.body as PlayAgainRequest;
+
+    if (!gameId) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'gameId is required',
+      });
+    }
+
+    const lobbyId = await gameService.getOrCreatePlayAgainLobby(gameId);
+
+    const response: PlayAgainResponse = {
+      lobbyId,
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'Game not found') {
+        return res.status(404).json({
+          error: 'Not found',
+          message: error.message,
+        });
+      }
+
+      if (error.message === 'Game has not ended yet') {
+        return res.status(400).json({
+          error: 'Bad request',
+          message: error.message,
+        });
+      }
+    }
+
+    console.error('Error getting play-again lobby:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

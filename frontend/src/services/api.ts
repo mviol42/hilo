@@ -17,6 +17,8 @@ import type {
   PlayCardsResponse,
   PickUpPileRequest,
   PickUpPileResponse,
+  PlayAgainRequest,
+  PlayAgainResponse,
   ErrorResponse,
 } from '@hilo/shared'
 import { config } from '@/config'
@@ -95,6 +97,11 @@ class ApiClient {
 
   async pickUpPile(request: PickUpPileRequest): Promise<PickUpPileResponse> {
     const response = await this.client.post<PickUpPileResponse>('/api/game/pickup-pile', request)
+    return response.data
+  }
+
+  async playAgain(request: PlayAgainRequest): Promise<PlayAgainResponse> {
+    const response = await this.client.post<PlayAgainResponse>('/api/game/play-again', request)
     return response.data
   }
 }

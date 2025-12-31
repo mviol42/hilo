@@ -37,7 +37,8 @@
       "Bash(npx vitest:*)",
       "WebSearch",
       "Bash(lsof:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Skill(backend)"
     ]
   }
 }

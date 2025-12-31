@@ -1,7 +1,7 @@
 interface ButtonProps {
   children: React.ReactNode
   onClick?: () => void
-  variant?: 'primary' | 'secondary' | 'danger'
+  variant?: 'primary' | 'secondary' | 'danger' | 'success'
   size?: 'small' | 'medium' | 'large'
   fullWidth?: boolean
   disabled?: boolean
@@ -23,6 +23,7 @@ export function Button({
     primary: 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-blue-300',
     secondary: 'bg-gray-600 hover:bg-gray-700 text-white disabled:bg-gray-300',
     danger: 'bg-red-600 hover:bg-red-700 text-white disabled:bg-red-300',
+    success: 'bg-green-600 hover:bg-green-700 text-white disabled:bg-green-300',
   }
 
   const sizeClasses = {

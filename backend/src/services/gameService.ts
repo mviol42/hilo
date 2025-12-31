@@ -442,6 +442,90 @@ export class GameService {
     // For production, you might want to implement a scan/delete pattern
     console.warn('[GameService] clearAll() does not delete Redis data - for testing with mock only');
   }
+
+  /**
+   * Get or create a "play again" lobby for an ended game.
+   * This is idempotent - all players calling this for the same gameId get the same lobbyId.
+   * @param gameId - The game ID that has ended
+   * @returns The lobby ID to join for a rematch
+   * @throws Error if game not found or game hasn't ended
+   */
+  async getOrCreatePlayAgainLobby(gameId: string): Promise<LobbyId> {
+    const game = await this.getGame(gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    if (game.phase !== 'ended') {
+      throw new Error('Game has not ended yet');
+    }
+
+    // Check if we already have a play-again lobby for this game
+    const existingLobbyId = await this.getPlayAgainLobby(gameId);
+    if (existingLobbyId) {
+      // Verify the lobby still exists
+      const lobby = await redisService.getLobby(existingLobbyId);
+      if (lobby) {
+        return existingLobbyId;
+      }
+      // Lobby was deleted, remove the mapping and create a new one
+      await this.deletePlayAgainMapping(gameId);
+    }
+
+    // Create a new lobby for play again
+    const { lobbyService } = await import('./lobbyService');
+    const newLobby = await lobbyService.createLobby();
+
+    // Save the mapping
+    await this.savePlayAgainMapping(gameId, newLobby.id);
+
+    return newLobby.id;
+  }
+
+  /**
+   * Get the play-again lobby ID for a game
+   */
+  private async getPlayAgainLobby(gameId: string): Promise<LobbyId | null> {
+    if (!redisService.isAvailable()) return null;
+
+    try {
+      const client = redisService.getClient();
+      const lobbyId = await client.get(`hilo:game:${gameId}:playagain`);
+      return lobbyId as LobbyId | null;
+    } catch (error) {
+      console.error('[GameService] Failed to get play-again lobby:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Save the play-again lobby mapping
+   */
+  private async savePlayAgainMapping(gameId: string, lobbyId: LobbyId): Promise<void> {
+    if (!redisService.isAvailable()) return;
+
+    try {
+      const client = redisService.getClient();
+      // Set with 1 hour expiry - players should join within that time
+      await client.set(`hilo:game:${gameId}:playagain`, lobbyId, { EX: 3600 });
+    } catch (error) {
+      console.error('[GameService] Failed to save play-again mapping:', error);
+    }
+  }
+
+  /**
+   * Delete the play-again lobby mapping
+   */
+  private async deletePlayAgainMapping(gameId: string): Promise<void> {
+    if (!redisService.isAvailable()) return;
+
+    try {
+      const client = redisService.getClient();
+      await client.del(`hilo:game:${gameId}:playagain`);
+    } catch (error) {
+      console.error('[GameService] Failed to delete play-again mapping:', error);
+    }
+  }
 }
 
 // Singleton instance
