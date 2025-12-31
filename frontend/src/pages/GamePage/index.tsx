@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import type { Card as CardType } from '@hilo/shared'
 import { apiClient } from '@/services/api'
@@ -21,6 +21,29 @@ export function GamePage() {
     card: CardType
     outcome: 'pile' | 'pickup'
   } | null>(null)
+
+  // Winning card phrase - randomly selected once on mount
+  const [winningCardPhrase] = useState(() => {
+    const phrases = [
+      'The final blow:',
+      'The winning card:',
+      'Victory was sealed by:',
+      'The card that ended it all:',
+      'The knockout punch:',
+      'This card sealed the deal:',
+      'The finishing move:',
+      'The card that made history:',
+      'The game-ender:',
+      'The coup de grâce:',
+      'This card clinched the win:',
+      'The death blow:',
+      'The card that brought the house down:',
+      'The nail in the coffin:',
+      'The winning strike:',
+      'This card closed the show:',
+    ]
+    return phrases[Math.floor(Math.random() * phrases.length)]
+  })
 
   // Redirect if no game ID and fetch initial game state
   useEffect(() => {
@@ -249,31 +272,6 @@ export function GamePage() {
   const isSetupPhase = gameState.phase === 'setup'
   const hasSelectedFaceUp = gameState.myFaceUp.length === 3
   const isGameEnded = gameState.phase === 'ended'
-
-  // Winning card phrases - randomly selected when game ends
-  const winningCardPhrases = [
-    'The final blow:',
-    'The winning card:',
-    'Victory was sealed by:',
-    'The card that ended it all:',
-    'The knockout punch:',
-    'This card sealed the deal:',
-    'The finishing move:',
-    'The card that made history:',
-    'The game-ender:',
-    'The coup de grâce:',
-    'This card clinched the win:',
-    'The death blow:',
-    'The card that brought the house down:',
-    'The nail in the coffin:',
-    'The winning strike:',
-    'This card closed the show:',
-  ]
-
-  const winningCardPhrase = useMemo(() => {
-    return winningCardPhrases[Math.floor(Math.random() * winningCardPhrases.length)]
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isGameEnded])
 
   // GAME ENDED
   if (isGameEnded) {

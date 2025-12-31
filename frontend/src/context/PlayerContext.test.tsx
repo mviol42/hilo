@@ -40,12 +40,12 @@ describe('PlayerContext', () => {
     )
 
     const playerId = screen.getByTestId('player-id').textContent
-    expect(localStorage.getItem('hilo_player_id')).toBe(playerId)
+    expect(localStorage.getItem('hilo:playerId')).toBe(playerId)
   })
 
   it('reuses existing player ID from localStorage', () => {
     const existingId = 'existing-player-id'
-    localStorage.setItem('hilo_player_id', existingId)
+    localStorage.setItem('hilo:playerId', existingId)
 
     render(
       <PlayerProvider>
@@ -83,11 +83,11 @@ describe('PlayerContext', () => {
 
     await user.click(screen.getByText('Set Name'))
 
-    expect(localStorage.getItem('hilo_player_name')).toBe('Alice')
+    expect(localStorage.getItem('hilo:playerName')).toBe('Alice')
   })
 
   it('loads existing player name from localStorage', () => {
-    localStorage.setItem('hilo_player_name', 'Bob')
+    localStorage.setItem('hilo:playerName', 'Bob')
 
     render(
       <PlayerProvider>

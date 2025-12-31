@@ -6,8 +6,8 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files (including package-lock.json)
-COPY package.json package-lock.json ./
+# Copy root package file
+COPY package.json ./
 
 # Copy workspace package files
 COPY shared/package*.json ./shared/
@@ -15,7 +15,8 @@ COPY backend/package*.json ./backend/
 COPY frontend/package*.json ./frontend/
 
 # Install all dependencies (including devDependencies for building)
-RUN npm ci
+# Use npm install instead of npm ci to resolve platform-specific optional deps
+RUN npm install
 
 # Copy source code
 COPY shared/ ./shared/
@@ -51,8 +52,8 @@ RUN npm config set fetch-retry-mintimeout 20000 && \
 
 WORKDIR /app
 
-# Copy root package files (including package-lock.json)
-COPY package.json package-lock.json ./
+# Copy root package file
+COPY package.json ./
 
 # Copy workspace package files
 COPY shared/package*.json ./shared/
@@ -60,7 +61,7 @@ COPY backend/package*.json ./backend/
 COPY frontend/package*.json ./frontend/
 
 # Install only production dependencies
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copy built artifacts from builder stage
 COPY --from=builder /app/shared/dist ./shared/dist
