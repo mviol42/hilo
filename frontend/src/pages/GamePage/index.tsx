@@ -291,6 +291,8 @@ export function GamePage() {
     try {
       setIsLoading(true)
       const response = await apiClient.playAgain({ gameId })
+      gameDispatch({ type: 'CLEAR_GAME_STATE' })
+      
       // Navigate to join page with the new lobby ID
       navigate(`/join?id=${response.lobbyId}`)
     } catch (error: any) {

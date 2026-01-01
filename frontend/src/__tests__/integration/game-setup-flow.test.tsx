@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom'
 import { GamePage } from '@/pages/GamePage'
-import { AppProviders } from '@/context'
+import { AppProviders, GameProvider } from '@/context'
 import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
 import type { PlayerView } from '@hilo/shared'
@@ -86,7 +86,7 @@ describe('Game Setup Flow Integration', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GamePage />} />
+            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
           </Routes>
         </AppProviders>
       </MemoryRouter>
@@ -134,7 +134,7 @@ describe('Game Setup Flow Integration', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GamePage />} />
+            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
           </Routes>
         </AppProviders>
       </MemoryRouter>
@@ -198,7 +198,7 @@ describe('Game Setup Flow Integration', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GamePage />} />
+            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
           </Routes>
         </AppProviders>
       </MemoryRouter>
