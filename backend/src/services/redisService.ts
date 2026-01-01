@@ -56,6 +56,7 @@ interface SerializableGameState {
     pickedUpCount?: number;
     timestamp: string;
   };
+  stateVersion: number;
 }
 
 /**
@@ -406,6 +407,7 @@ export class RedisService {
       })),
       winner: gameState.winner,
       lastAction: gameState.lastAction,
+      stateVersion: gameState.stateVersion,
     };
   }
 
@@ -428,6 +430,7 @@ export class RedisService {
       })),
       winner: data.winner,
       lastAction: data.lastAction,
+      stateVersion: data.stateVersion,
     } as GameState;
   }
 }

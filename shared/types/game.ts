@@ -58,6 +58,7 @@ export interface GameState {
   log: GameLogEntry[];
   winner?: PlayerId;
   lastAction?: LastAction;
+  stateVersion: number; // Incremented on each state mutation for sync
 }
 
 /**
@@ -87,4 +88,5 @@ export interface PlayerView {
   playerNames: { [playerId: string]: string }; // Map of all player IDs to names
   lastAction?: LastAction; // Most recent game action
   turnOrder: PlayerId[]; // Order of player turns (for turn indicator)
+  stateVersion: number; // For idempotent state updates
 }

@@ -24,6 +24,8 @@ interface GameContextState {
     playerName: string
     cardCount: number
   } | null
+  /** Tracks the last processed stateVersion for idempotent updates */
+  lastStateVersion: number
 }
 
 type GameAction =
@@ -44,6 +46,17 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
   switch (action.type) {
     case 'SET_GAME_STATE': {
       const newState = action.payload
+
+      // Idempotent state update: skip if we've already processed this or a newer version
+      // This prevents duplicate processing from heartbeats or retried updates
+      if (newState.stateVersion <= state.lastStateVersion) {
+        console.log('[GameContext] Skipping stale state update:', {
+          received: newState.stateVersion,
+          current: state.lastStateVersion,
+        })
+        return state
+      }
+
       let lastPlayedCards: GameContextState['lastPlayedCards'] = null
       let pileBlownInfo: GameContextState['pileBlownInfo'] = null
       let pilePickupInfo: GameContextState['pilePickupInfo'] = null
@@ -71,12 +84,18 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
         console.log('[GameContext] No lastAction in state update')
       }
 
+      console.log('[GameContext] Applying state update:', {
+        version: newState.stateVersion,
+        phase: newState.phase,
+      })
+
       return {
         ...state,
         gameState: newState,
         lastPlayedCards,
         pileBlownInfo,
         pilePickupInfo,
+        lastStateVersion: newState.stateVersion,
       }
     }
     case 'CLEAR_GAME_STATE':
@@ -88,6 +107,7 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
         lastPlayedCards: null,
         pileBlownInfo: null,
         pilePickupInfo: null,
+        lastStateVersion: -1, // Reset to allow any new game state
       }
     case 'TOGGLE_CARD_SELECTION': {
       const card = action.payload
@@ -182,6 +202,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     lastPlayedCards: null,
     pileBlownInfo: null,
     pilePickupInfo: null,
+    lastStateVersion: -1, // Start at -1 to accept any initial state (version 0+)
   })
 
   // Set up WebSocket listeners

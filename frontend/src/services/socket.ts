@@ -39,6 +39,7 @@ class SocketManager {
   // Store lobby/game info for auto-rejoin after reconnection
   private currentLobbyId: string | null = null
   private currentPlayerId: string | null = null
+  private currentGameId: string | null = null
 
   connect(): TypedSocket {
     if (this.socket?.connected) {
@@ -69,6 +70,7 @@ class SocketManager {
     }
     this.currentLobbyId = null
     this.currentPlayerId = null
+    this.currentGameId = null
     this.updateConnectionState('disconnected')
   }
 
@@ -97,6 +99,15 @@ class SocketManager {
           lobbyId: this.currentLobbyId,
           playerId: this.currentPlayerId,
         })
+
+        // Request game state if we were in a game (for immediate recovery)
+        if (this.currentGameId) {
+          console.log('[Socket] Requesting game state:', this.currentGameId)
+          this.socket?.emit('game:requestState', {
+            gameId: this.currentGameId,
+            playerId: this.currentPlayerId,
+          })
+        }
       }
     })
 
@@ -191,6 +202,29 @@ class SocketManager {
   // Get current lobby ID (for checking if user is in a lobby)
   getCurrentLobbyId(): string | null {
     return this.currentLobbyId
+  }
+
+  // Set current game ID (called when game starts)
+  setCurrentGameId(gameId: string): void {
+    this.currentGameId = gameId
+  }
+
+  // Clear current game ID (called when game ends or player leaves)
+  clearCurrentGameId(): void {
+    this.currentGameId = null
+  }
+
+  // Get current game ID
+  getCurrentGameId(): string | null {
+    return this.currentGameId
+  }
+
+  // Request game state (for manual recovery or initial load)
+  requestGameState(gameId: string, playerId: string): void {
+    if (!this.socket) {
+      throw new Error('Socket not connected')
+    }
+    this.socket.emit('game:requestState', { gameId, playerId })
   }
 
   // Event listeners

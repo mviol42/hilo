@@ -99,6 +99,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob' },
         turnOrder: ['player-1', 'player-2'],
+        stateVersion: 1,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-1',
@@ -149,6 +150,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-1',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob' },
         turnOrder: ['player-1', 'player-2'],
+        stateVersion: 1,
         lastAction: {
           type: 'blow_up',
           playerId: 'player-1',
@@ -204,6 +206,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-1',
         playerNames: { 'player-1': 'Alice' },
         turnOrder: ['player-1'],
+        stateVersion: 1,
         lastAction: {
           type: 'blow_up',
           playerId: 'player-1',
@@ -249,6 +252,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob' },
         turnOrder: ['player-1', 'player-2'],
+        stateVersion: 1,
         lastAction: {
           type: 'pickup_pile',
           playerId: 'player-1',
@@ -292,6 +296,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice' },
         turnOrder: ['player-1'],
+        stateVersion: 1,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-1',
@@ -335,6 +340,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice' },
         turnOrder: ['player-1'],
+        stateVersion: 1,
         // No lastAction
       }
 
@@ -403,6 +409,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
         turnOrder: ['player-1', 'player-2', 'player-3'],
+        stateVersion: 1,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-1',
@@ -450,6 +457,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-3',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
         turnOrder: ['player-1', 'player-2', 'player-3'],
+        stateVersion: 1,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-2',
@@ -497,6 +505,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-1',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
         turnOrder: ['player-1', 'player-2', 'player-3'],
+        stateVersion: 1,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-3',
@@ -544,6 +553,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-2', // Player 2 goes again after blow-up
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
         turnOrder: ['player-1', 'player-2', 'player-3'],
+        stateVersion: 1,
         lastAction: {
           type: 'blow_up',
           playerId: 'player-2',
@@ -597,6 +607,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-1', // Turn moves to player 1 after pickup
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
         turnOrder: ['player-1', 'player-2', 'player-3'],
+        stateVersion: 1,
         lastAction: {
           type: 'pickup_pile',
           playerId: 'player-3',
@@ -658,6 +669,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
         turnOrder: ['player-1', 'player-2', 'player-3'],
+        stateVersion: 1,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-1',
@@ -680,6 +692,7 @@ describe('GameContext', () => {
         ...turn1View,
         pile: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }],
         activePlayerId: 'player-3',
+        stateVersion: 2,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-2',
@@ -702,6 +715,7 @@ describe('GameContext', () => {
         ...turn2View,
         pile: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }, { rank: '7', suit: 'clubs' }],
         activePlayerId: 'player-1',
+        stateVersion: 3,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-3',
@@ -761,6 +775,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice' },
         turnOrder: ['player-1'],
+        stateVersion: 1,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-1',
@@ -811,6 +826,7 @@ describe('GameContext', () => {
         activePlayerId: 'player-1',
         playerNames: { 'player-1': 'Alice' },
         turnOrder: ['player-1'],
+        stateVersion: 1,
         lastAction: {
           type: 'blow_up',
           playerId: 'player-1',
@@ -844,6 +860,280 @@ describe('GameContext', () => {
       })
 
       expect(screen.getByTestId('pile-blown-info')).toHaveTextContent('none')
+    })
+  })
+
+  describe('stateVersion deduplication', () => {
+    function DispatchableComponent({
+      onMount,
+    }: {
+      onMount: (dispatch: ReturnType<typeof useGame>['dispatch']) => void
+    }) {
+      const { gameState, lastStateVersion, dispatch } = useGame()
+
+      React.useEffect(() => {
+        onMount(dispatch)
+      }, [])
+
+      return (
+        <div>
+          <p data-testid="game-phase">{gameState?.phase || 'no game'}</p>
+          <p data-testid="active-player">{gameState?.activePlayerId || 'none'}</p>
+          <p data-testid="state-version">{lastStateVersion}</p>
+        </div>
+      )
+    }
+
+    it('processes state update with higher version', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      // Initial state version is -1
+      expect(screen.getByTestId('state-version')).toHaveTextContent('-1')
+
+      // Send version 1
+      const playerView: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {},
+        pile: [],
+        deckCount: 40,
+        activePlayerId: 'player-1',
+        playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
+        stateVersion: 1,
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView })
+      })
+
+      expect(screen.getByTestId('state-version')).toHaveTextContent('1')
+      expect(screen.getByTestId('game-phase')).toHaveTextContent('playing')
+    })
+
+    it('skips state update with same version (idempotent)', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      // Send version 1
+      const playerView1: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {},
+        pile: [],
+        deckCount: 40,
+        activePlayerId: 'player-1',
+        playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
+        stateVersion: 1,
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView1 })
+      })
+
+      expect(screen.getByTestId('active-player')).toHaveTextContent('player-1')
+
+      // Try to send same version 1 with different activePlayerId
+      const playerView1Duplicate: PlayerView = {
+        ...playerView1,
+        activePlayerId: 'player-2', // Different value, but same version
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView1Duplicate })
+      })
+
+      // Should still show player-1 because duplicate was skipped
+      expect(screen.getByTestId('active-player')).toHaveTextContent('player-1')
+      expect(screen.getByTestId('state-version')).toHaveTextContent('1')
+    })
+
+    it('skips state update with lower version (stale update)', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      // Send version 5
+      const playerView5: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {},
+        pile: [],
+        deckCount: 40,
+        activePlayerId: 'player-1',
+        playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
+        stateVersion: 5,
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView5 })
+      })
+
+      expect(screen.getByTestId('state-version')).toHaveTextContent('5')
+
+      // Try to send stale version 3
+      const playerView3: PlayerView = {
+        ...playerView5,
+        stateVersion: 3,
+        activePlayerId: 'player-2',
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView3 })
+      })
+
+      // Should still show player-1 because stale update was skipped
+      expect(screen.getByTestId('active-player')).toHaveTextContent('player-1')
+      expect(screen.getByTestId('state-version')).toHaveTextContent('5')
+    })
+
+    it('processes state update with higher version after stale', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      // Send version 1
+      const playerView1: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {},
+        pile: [],
+        deckCount: 40,
+        activePlayerId: 'player-1',
+        playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
+        stateVersion: 1,
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView1 })
+      })
+
+      // Send version 3 (newer)
+      const playerView3: PlayerView = {
+        ...playerView1,
+        stateVersion: 3,
+        activePlayerId: 'player-2',
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView3 })
+      })
+
+      expect(screen.getByTestId('active-player')).toHaveTextContent('player-2')
+      expect(screen.getByTestId('state-version')).toHaveTextContent('3')
+    })
+
+    it('resets stateVersion when game is cleared', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      // Send version 10
+      const playerView: PlayerView = {
+        id: 'game-1',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {},
+        pile: [],
+        deckCount: 40,
+        activePlayerId: 'player-1',
+        playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
+        stateVersion: 10,
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: playerView })
+      })
+
+      expect(screen.getByTestId('state-version')).toHaveTextContent('10')
+
+      // Clear game
+      act(() => {
+        dispatchRef({ type: 'CLEAR_GAME_STATE' })
+      })
+
+      // Should reset to -1
+      expect(screen.getByTestId('state-version')).toHaveTextContent('-1')
+
+      // Now version 0 should be accepted
+      const newGameView: PlayerView = {
+        ...playerView,
+        id: 'game-2',
+        stateVersion: 0,
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: newGameView })
+      })
+
+      expect(screen.getByTestId('state-version')).toHaveTextContent('0')
+      expect(screen.getByTestId('game-phase')).toHaveTextContent('playing')
     })
   })
 })

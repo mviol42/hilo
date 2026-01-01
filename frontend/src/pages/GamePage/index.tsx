@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import type { Card as CardType } from '@hilo/shared'
 import { apiClient } from '@/services/api'
+import { socketManager } from '@/services/socket'
 import { usePlayer, useGame, useUI } from '@/context'
 import { Card, Hand, StackedCards, PlayAnimation, Button, TurnIndicator } from '@/components'
 
@@ -44,6 +45,16 @@ export function GamePage() {
     ]
     return phrases[Math.floor(Math.random() * phrases.length)]
   })
+
+  // Track game ID for reconnection recovery
+  useEffect(() => {
+    if (gameId) {
+      socketManager.setCurrentGameId(gameId)
+    }
+    return () => {
+      socketManager.clearCurrentGameId()
+    }
+  }, [gameId])
 
   // Redirect if no game ID and fetch initial game state
   useEffect(() => {
@@ -513,7 +524,6 @@ export function GamePage() {
               currentPlayerId={playerId!}
             />
           )}
-          <p className="text-gray-300 text-sm">Game ID: {gameId.substring(0, 8)}...</p>
         </div>
 
         {/* Pile Info */}

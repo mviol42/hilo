@@ -59,12 +59,19 @@ export interface GamePlayerWonEvent {
   winnerName: string;
 }
 
+// Game request state event (client requests fresh state on reconnect)
+export interface GameRequestStateEvent {
+  gameId: string;
+  playerId: PlayerId;
+}
+
 // Client-to-Server event map
 // NOTE: WebSockets are READ-ONLY for the client. All mutations go through HTTP API.
 // These events are only for subscribing/unsubscribing to room notifications.
 export interface ClientToServerEvents {
   'lobby:join': (data: LobbyJoinEvent) => void;
   'lobby:leave': (data: { lobbyId: LobbyId; playerId: PlayerId }) => void;
+  'game:requestState': (data: GameRequestStateEvent) => void;
 }
 
 // Error event

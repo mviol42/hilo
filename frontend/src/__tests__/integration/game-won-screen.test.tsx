@@ -77,6 +77,7 @@ describe('Game Won Screen', () => {
       winnerName: 'Player 1',
       playerNames: { 'player-1': 'Player 1' },
       turnOrder: ['player-1'],
+      stateVersion: 10,
       lastAction: {
         type: 'play_cards',
         playerId: 'player-1',
@@ -133,6 +134,7 @@ describe('Game Won Screen', () => {
       winnerName: 'Player 2',
       playerNames: { 'player-1': 'Player 1', 'player-2': 'Player 2' },
       turnOrder: ['player-1', 'player-2'],
+      stateVersion: 10,
       lastAction: {
         type: 'play_cards',
         playerId: 'player-2',
@@ -196,6 +198,7 @@ describe('Game Won Screen', () => {
       winnerName: 'Player 1',
       playerNames: { 'player-1': 'Player 1' },
       turnOrder: ['player-1'],
+      stateVersion: 10,
       lastAction: {
         type: 'play_cards',
         playerId: 'player-1',
@@ -233,6 +236,7 @@ describe('Game Won Screen', () => {
       winnerName: 'Player 1',
       playerNames: { 'player-1': 'Player 1' },
       turnOrder: ['player-1'],
+      stateVersion: 10,
     }
 
     render(
@@ -270,6 +274,7 @@ describe('Game Won Screen', () => {
       winnerName: 'Player 1',
       playerNames: { 'player-1': 'Player 1' },
       turnOrder: ['player-1'],
+      stateVersion: 10,
     }
 
     render(

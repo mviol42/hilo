@@ -166,11 +166,12 @@ export function initializeGame(playerIds: PlayerId[], deckStrategy: DeckStrategy
     turnOrder: [...playerIds],
     log: [],
     winner: undefined,
+    stateVersion: 0,
   };
 }
 
 export function dealCards(gameState: GameState): GameState {
-  const newState = { ...gameState };
+  const newState = { ...gameState, stateVersion: gameState.stateVersion + 1 };
 
   for (const playerId of newState.turnOrder) {
     const playerState = newState.players.get(playerId);
@@ -218,7 +219,7 @@ export function selectFaceUpCards(
     }
   }
 
-  const newState = { ...gameState };
+  const newState = { ...gameState, stateVersion: gameState.stateVersion + 1 };
   const newPlayerState = { ...playerState };
 
   const sortedIndices = [...cardIndices].sort((a, b) => b - a);
@@ -373,7 +374,7 @@ export function playCards(
     }
   }
 
-  let newState = { ...gameState };
+  let newState = { ...gameState, stateVersion: gameState.stateVersion + 1 };
   const newPlayerState = { ...playerState };
 
   if (source === 'hand') {
@@ -515,7 +516,7 @@ export function pickupPile(gameState: GameState, playerId: PlayerId): GameState 
     throw new GameEngineError('Player not found');
   }
 
-  const newState = { ...gameState };
+  const newState = { ...gameState, stateVersion: gameState.stateVersion + 1 };
   const newPlayerState = {
     hand: [...playerState.hand],
     faceUp: [...playerState.faceUp],
@@ -575,7 +576,7 @@ export function startGame(gameState: GameState): GameState {
     }
   }
 
-  const newState = { ...gameState, phase: 'playing' as GamePhase };
+  const newState = { ...gameState, phase: 'playing' as GamePhase, stateVersion: gameState.stateVersion + 1 };
 
   const firstPlayer = determineFirstPlayer(newState);
   newState.activePlayerId = firstPlayer;

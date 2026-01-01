@@ -46,6 +46,7 @@ describe('Game Setup Flow Integration', () => {
       'player-2': 'Player 2',
     },
     turnOrder: ['player-1', 'player-2'],
+    stateVersion: 0,
   }
 
   beforeEach(() => {
@@ -170,6 +171,7 @@ describe('Game Setup Flow Integration', () => {
     const player2WaitingState: PlayerView = {
       ...mockGameState,
       activePlayerId: 'player-1',
+      stateVersion: 1, // First state update
       myHand: [
         { rank: '3', suit: 'clubs' },
         { rank: '6', suit: 'spades' },
@@ -216,6 +218,7 @@ describe('Game Setup Flow Integration', () => {
     const player2ActiveState: PlayerView = {
       ...player2WaitingState,
       activePlayerId: 'player-2',
+      stateVersion: 2, // Increment version for new state
     }
 
     if (gameStateUpdateCallback) {

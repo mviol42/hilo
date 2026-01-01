@@ -215,6 +215,7 @@ export class GameService {
       playerNames,
       lastAction: game.lastAction,
       turnOrder: game.turnOrder,
+      stateVersion: game.stateVersion,
     };
   }
 
