@@ -45,6 +45,7 @@ describe('Game Setup Flow Integration', () => {
       'player-1': 'Player 1',
       'player-2': 'Player 2',
     },
+    turnOrder: ['player-1', 'player-2'],
   }
 
   beforeEach(() => {

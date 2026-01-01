@@ -86,4 +86,5 @@ export interface PlayerView {
   winnerName?: string;
   playerNames: { [playerId: string]: string }; // Map of all player IDs to names
   lastAction?: LastAction; // Most recent game action
+  turnOrder: PlayerId[]; // Order of player turns (for turn indicator)
 }

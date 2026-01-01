@@ -98,6 +98,7 @@ describe('GameContext', () => {
         deckCount: 40,
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob' },
+        turnOrder: ['player-1', 'player-2'],
         lastAction: {
           type: 'play_cards',
           playerId: 'player-1',
@@ -147,6 +148,7 @@ describe('GameContext', () => {
         deckCount: 40,
         activePlayerId: 'player-1',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob' },
+        turnOrder: ['player-1', 'player-2'],
         lastAction: {
           type: 'blow_up',
           playerId: 'player-1',
@@ -201,6 +203,7 @@ describe('GameContext', () => {
         deckCount: 40,
         activePlayerId: 'player-1',
         playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
         lastAction: {
           type: 'blow_up',
           playerId: 'player-1',
@@ -245,6 +248,7 @@ describe('GameContext', () => {
         deckCount: 40,
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob' },
+        turnOrder: ['player-1', 'player-2'],
         lastAction: {
           type: 'pickup_pile',
           playerId: 'player-1',
@@ -287,6 +291,7 @@ describe('GameContext', () => {
         deckCount: 40,
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
         lastAction: {
           type: 'play_cards',
           playerId: 'player-1',
@@ -329,6 +334,7 @@ describe('GameContext', () => {
         deckCount: 40,
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
         // No lastAction
       }
 
@@ -396,6 +402,7 @@ describe('GameContext', () => {
         deckCount: 30,
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        turnOrder: ['player-1', 'player-2', 'player-3'],
         lastAction: {
           type: 'play_cards',
           playerId: 'player-1',
@@ -442,6 +449,7 @@ describe('GameContext', () => {
         deckCount: 29,
         activePlayerId: 'player-3',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        turnOrder: ['player-1', 'player-2', 'player-3'],
         lastAction: {
           type: 'play_cards',
           playerId: 'player-2',
@@ -488,6 +496,7 @@ describe('GameContext', () => {
         deckCount: 28,
         activePlayerId: 'player-1',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        turnOrder: ['player-1', 'player-2', 'player-3'],
         lastAction: {
           type: 'play_cards',
           playerId: 'player-3',
@@ -534,6 +543,7 @@ describe('GameContext', () => {
         deckCount: 30,
         activePlayerId: 'player-2', // Player 2 goes again after blow-up
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        turnOrder: ['player-1', 'player-2', 'player-3'],
         lastAction: {
           type: 'blow_up',
           playerId: 'player-2',
@@ -586,6 +596,7 @@ describe('GameContext', () => {
         deckCount: 30,
         activePlayerId: 'player-1', // Turn moves to player 1 after pickup
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        turnOrder: ['player-1', 'player-2', 'player-3'],
         lastAction: {
           type: 'pickup_pile',
           playerId: 'player-3',
@@ -646,6 +657,7 @@ describe('GameContext', () => {
         deckCount: 30,
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
+        turnOrder: ['player-1', 'player-2', 'player-3'],
         lastAction: {
           type: 'play_cards',
           playerId: 'player-1',
@@ -748,6 +760,7 @@ describe('GameContext', () => {
         deckCount: 40,
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
         lastAction: {
           type: 'play_cards',
           playerId: 'player-1',
@@ -797,6 +810,7 @@ describe('GameContext', () => {
         deckCount: 40,
         activePlayerId: 'player-1',
         playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
         lastAction: {
           type: 'blow_up',
           playerId: 'player-1',

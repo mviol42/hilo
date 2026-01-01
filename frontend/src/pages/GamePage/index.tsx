@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import type { Card as CardType } from '@hilo/shared'
 import { apiClient } from '@/services/api'
 import { usePlayer, useGame, useUI } from '@/context'
-import { Card, Hand, StackedCards, PlayAnimation, Button } from '@/components'
+import { Card, Hand, StackedCards, PlayAnimation, Button, TurnIndicator } from '@/components'
 
 export function GamePage() {
   const navigate = useNavigate()
@@ -505,9 +505,14 @@ export function GamePage() {
       <div className="max-w-6xl mx-auto space-y-4">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-2xl font-bold">
-            {isMyTurn ? "Your Turn" : "Waiting..."}
-          </h1>
+          {gameState.turnOrder && (
+            <TurnIndicator
+              activePlayerId={gameState.activePlayerId}
+              turnOrder={gameState.turnOrder}
+              playerNames={gameState.playerNames}
+              currentPlayerId={playerId!}
+            />
+          )}
           <p className="text-gray-300 text-sm">Game ID: {gameId.substring(0, 8)}...</p>
         </div>
 
@@ -575,7 +580,7 @@ export function GamePage() {
             selectedCards={selectedCards}
             playableCards={playableCards}
             onCardClick={isMyTurn ? handlePlayCardClick : undefined}
-            title="Your Hand"
+            title={`Your Hand - ${gameState.myHand.length} Card${gameState.myHand.length !== 1 ? 's' : ''}`}
             size="medium"
             className={`bg-gray-800/50 rounded-lg p-4 ${
               slideAnimation === 'bottom' ? 'animate-slide-in-from-bottom' : ''
@@ -589,7 +594,9 @@ export function GamePage() {
             slideAnimation === 'top' ? 'animate-slide-in-from-top' : ''
           }`}>
             <h3 className="text-lg font-semibold mb-2 text-white">
-              {isPlayingFaceUp ? 'Your Face-Up Cards (play from these)' : 'Your Face-Up Cards'}
+              {isPlayingFaceUp
+                ? `Your Face-Up Cards - ${gameState.myFaceUp.length} Card${gameState.myFaceUp.length !== 1 ? 's' : ''} (play from these)`
+                : `Your Face-Up Cards - ${gameState.myFaceUp.length} Card${gameState.myFaceUp.length !== 1 ? 's' : ''}`}
             </h3>
             {isPlayingFaceUp ? (
               // When playing from face-up, make them selectable

@@ -214,6 +214,7 @@ export class GameService {
       winnerName: game.winner ? playerNames[game.winner] : undefined,
       playerNames,
       lastAction: game.lastAction,
+      turnOrder: game.turnOrder,
     };
   }
 
