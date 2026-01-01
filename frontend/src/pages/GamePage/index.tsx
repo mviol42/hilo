@@ -574,15 +574,6 @@ export function GamePage() {
           ))}
         </div>
 
-        {/* Toggle Button - only show if player has hand cards */}
-        {(gameState.myHand.length > 0 && gameState.myFaceUp.length > 0) && (
-          <div className="flex justify-center">
-            <Button onClick={handleToggleFaceUp} variant="secondary">
-              {showFaceUp ? 'Show Hand' : 'Show Face Up Cards'}
-            </Button>
-          </div>
-        )}
-
         {/* Player's Hand - shown when toggle is off and has hand cards */}
         {gameState.myHand.length > 0 && !showFaceUp && (
           <Hand
@@ -591,6 +582,14 @@ export function GamePage() {
             playableCards={playableCards}
             onCardClick={isMyTurn ? handlePlayCardClick : undefined}
             title={`Your Hand - ${gameState.myHand.length} Card${gameState.myHand.length !== 1 ? 's' : ''}`}
+            headerAction={gameState.myFaceUp.length > 0 ? (
+              <button
+                onClick={handleToggleFaceUp}
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                Show piles ↑
+              </button>
+            ) : undefined}
             size="medium"
             className={`bg-gray-800/50 rounded-lg p-4 ${
               slideAnimation === 'bottom' ? 'animate-slide-in-from-bottom' : ''
@@ -603,11 +602,21 @@ export function GamePage() {
           <div className={`bg-gray-800/50 rounded-lg p-4 ${
             slideAnimation === 'top' ? 'animate-slide-in-from-top' : ''
           }`}>
-            <h3 className="text-lg font-semibold mb-2 text-white">
-              {isPlayingFaceUp
-                ? `Your Face-Up Cards - ${gameState.myFaceUp.length} Card${gameState.myFaceUp.length !== 1 ? 's' : ''} (play from these)`
-                : `Your Face-Up Cards - ${gameState.myFaceUp.length} Card${gameState.myFaceUp.length !== 1 ? 's' : ''}`}
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-white">
+                {isPlayingFaceUp
+                  ? `Your face up cards (play from these)`
+                  : `Your piles`}
+              </h3>
+              {!isPlayingFaceUp && gameState.myHand.length > 0 && (
+                <button
+                  onClick={handleToggleFaceUp}
+                  className="text-sm text-gray-400 hover:text-white transition-colors"
+                >
+                  Show hand ↓
+                </button>
+              )}
+            </div>
             {isPlayingFaceUp ? (
               // When playing from face-up, make them selectable
               <Hand

@@ -71,8 +71,8 @@ export function TurnIndicator({
     : `${playerNames[activePlayerId] || `Player ${activePlayerId.substring(0, 8)}`}'s Turn`
 
   const nextText = nextPlayerId === currentPlayerId
-    ? 'Your Turn'
-    : `${playerNames[nextPlayerId] || `Player ${nextPlayerId.substring(0, 8)}`}'s Turn`
+    ? 'You\'re up next'
+    : `${playerNames[nextPlayerId] || `Player ${nextPlayerId.substring(0, 8)}`} is up next`
 
   return (
     <div className="flex items-center justify-center gap-2 text-lg">

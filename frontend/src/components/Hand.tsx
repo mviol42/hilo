@@ -7,6 +7,7 @@ interface HandProps {
   playableCards?: CardType[]
   onCardClick?: (card: CardType) => void
   title?: string
+  headerAction?: React.ReactNode
   size?: 'small' | 'medium' | 'large'
   className?: string
   allowMixedRanks?: boolean // Allow selecting cards of different ranks (for setup phase)
@@ -22,6 +23,7 @@ export function Hand({
   playableCards = [],
   onCardClick,
   title,
+  headerAction,
   size = 'medium',
   className = '',
   allowMixedRanks = false,
@@ -52,7 +54,12 @@ export function Hand({
 
   return (
     <div className={className}>
-      {title && <h3 className="text-lg font-semibold mb-2 text-white">{title}</h3>}
+      {(title || headerAction) && (
+        <div className="flex items-center justify-between mb-2">
+          {title && <h3 className="text-lg font-semibold text-white">{title}</h3>}
+          {headerAction}
+        </div>
+      )}
       <div className="flex gap-2 overflow-x-auto py-2 px-1">
         {sortedCards.map((card, index) => (
           <div key={`${card.rank}-${card.suit}-${index}`} className="flex-shrink-0">
