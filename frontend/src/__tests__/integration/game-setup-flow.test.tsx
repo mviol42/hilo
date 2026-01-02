@@ -7,7 +7,7 @@ import { AppProviders } from '@/context'
 import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
 import * as playerUtils from '@/utils/player'
-import type { PlayerView } from '@hilo/shared'
+import { createCard, type PlayerView } from '@hilo/shared'
 
 // Mock API and Socket
 vi.mock('@/services/api')
@@ -21,12 +21,12 @@ describe('Game Setup Flow Integration', () => {
     id: 'game-123',
     phase: 'setup',
     myHand: [
-      { rank: '2', suit: 'hearts' },
-      { rank: '5', suit: 'diamonds' },
-      { rank: 'A', suit: 'spades' },
-      { rank: '7', suit: 'clubs' },
-      { rank: 'K', suit: 'hearts' },
-      { rank: '9', suit: 'diamonds' },
+      createCard('2', 'hearts'),
+      createCard('5', 'diamonds'),
+      createCard('A', 'spades'),
+      createCard('7', 'clubs'),
+      createCard('K', 'hearts'),
+      createCard('9', 'diamonds'),
     ],
     myFaceUp: [],
     myFaceDownCount: 3,
@@ -124,12 +124,12 @@ describe('Game Setup Flow Integration', () => {
       ...mockGameState,
       activePlayerId: 'player-1', // Player 1 goes first
       myHand: [
-        { rank: '3', suit: 'clubs' },
-        { rank: '6', suit: 'spades' },
-        { rank: 'Q', suit: 'hearts' },
-        { rank: '8', suit: 'diamonds' },
-        { rank: 'J', suit: 'clubs' },
-        { rank: '4', suit: 'spades' },
+        createCard('3', 'clubs'),
+        createCard('6', 'spades'),
+        createCard('Q', 'hearts'),
+        createCard('8', 'diamonds'),
+        createCard('J', 'clubs'),
+        createCard('4', 'spades'),
       ],
       otherPlayers: {
         'player-1': {
@@ -189,21 +189,21 @@ describe('Game Setup Flow Integration', () => {
       activePlayerId: 'player-1',
       stateVersion: 1, // First state update
       myHand: [
-        { rank: '3', suit: 'clubs' },
-        { rank: '6', suit: 'spades' },
-        { rank: 'Q', suit: 'hearts' },
-        { rank: '8', suit: 'diamonds' },
-        { rank: 'J', suit: 'clubs' },
-        { rank: '4', suit: 'spades' },
+        createCard('3', 'clubs'),
+        createCard('6', 'spades'),
+        createCard('Q', 'hearts'),
+        createCard('8', 'diamonds'),
+        createCard('J', 'clubs'),
+        createCard('4', 'spades'),
       ],
       otherPlayers: {
         'player-1': {
           name: 'Player 1',
           handCount: 3,
           faceUp: [
-            { rank: '2', suit: 'hearts' },
-            { rank: '5', suit: 'diamonds' },
-            { rank: 'A', suit: 'spades' },
+            createCard('2', 'hearts'),
+            createCard('5', 'diamonds'),
+            createCard('A', 'spades'),
           ],
           faceDownCount: 3,
         },

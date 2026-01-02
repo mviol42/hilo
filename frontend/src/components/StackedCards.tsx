@@ -1,4 +1,4 @@
-import type { Card as CardType } from '@hilo/shared'
+import { type Card as CardType, createCard } from '@hilo/shared'
 import { Card } from './Card'
 
 interface StackedCardsProps {
@@ -43,7 +43,7 @@ export function StackedCards({
             <div key={index} className="flex flex-col items-center gap-2">
               {!isPlayed ? (
                 <Card
-                  card={{ rank: '2', suit: 'hearts' }}
+                  card={createCard('2', 'hearts')}
                   size={size}
                   faceDown
                   selectable={isMyTurn && !!onFaceDownClick}
@@ -78,9 +78,9 @@ export function StackedCards({
         {/* Face-Up Cards (on top) */}
         {faceUpCards.length > 0 && (
           <div className={`flex ${gapClass} justify-center relative z-10`}>
-            {faceUpCards.map((card, index) => (
+            {faceUpCards.map((card) => (
               <Card
-                key={`faceup-${card.rank}-${card.suit}-${index}`}
+                key={card.id}
                 card={card}
                 size={size}
               />

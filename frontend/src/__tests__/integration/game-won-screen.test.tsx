@@ -5,7 +5,7 @@ import '@testing-library/jest-dom'
 import { GamePage } from '@/pages/GamePage'
 import { AppProviders } from '@/context'
 import { socketManager } from '@/services/socket'
-import type { PlayerView } from '@hilo/shared'
+import { createCard, type PlayerView } from '@hilo/shared'
 
 // Mock API and Socket
 vi.mock('@/services/api')
@@ -84,7 +84,7 @@ describe('Game Won Screen', () => {
         type: 'play_cards',
         playerId: 'player-1',
         playerName: 'Player 1',
-        cards: [{ rank: 'A', suit: 'spades' }],
+        cards: [createCard('A', 'spades')],
         timestamp: new Date().toISOString(),
       },
     }
@@ -124,7 +124,7 @@ describe('Game Won Screen', () => {
     const lostGameState: PlayerView = {
       id: 'game-123',
       phase: 'ended',
-      myHand: [{ rank: '2', suit: 'hearts' }],
+      myHand: [createCard('2', 'hearts')],
       myFaceUp: [],
       myFaceDownCount: 0,
       myFaceDownPlayed: [true, true, true],
@@ -141,7 +141,7 @@ describe('Game Won Screen', () => {
         type: 'play_cards',
         playerId: 'player-2',
         playerName: 'Player 2',
-        cards: [{ rank: 'K', suit: 'hearts' }],
+        cards: [createCard('K', 'hearts')],
         timestamp: new Date().toISOString(),
       },
     }
@@ -205,7 +205,7 @@ describe('Game Won Screen', () => {
         type: 'play_cards',
         playerId: 'player-1',
         playerName: 'Player 1',
-        cards: [{ rank: '10', suit: 'diamonds' }],
+        cards: [createCard('10', 'diamonds')],
         timestamp: new Date().toISOString(),
       },
     }

@@ -1,4 +1,4 @@
-import type { Card as CardType } from '@hilo/shared'
+import { type Card as CardType, cardsEqual } from '@hilo/shared'
 import { Card } from './Card'
 
 interface HandProps {
@@ -11,10 +11,6 @@ interface HandProps {
   size?: 'small' | 'medium' | 'large'
   className?: string
   allowMixedRanks?: boolean // Allow selecting cards of different ranks (for setup phase)
-}
-
-function cardsEqual(a: CardType, b: CardType): boolean {
-  return a.rank === b.rank && a.suit === b.suit
 }
 
 export function Hand({
@@ -61,8 +57,8 @@ export function Hand({
         </div>
       )}
       <div className="flex gap-2 overflow-x-auto py-2 px-1">
-        {sortedCards.map((card, index) => (
-          <div key={`${card.rank}-${card.suit}-${index}`} className="flex-shrink-0">
+        {sortedCards.map((card) => (
+          <div key={card.id} className="flex-shrink-0">
             <Card
               card={card}
               size={size}

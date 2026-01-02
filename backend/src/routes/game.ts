@@ -20,6 +20,7 @@ import {
   PlayAgainResponse,
   PlayerId,
   GameLogEntry,
+  cardsEqual,
 } from '@hilo/shared';
 import { ClientToServerEvents, ServerToClientEvents } from '@hilo/shared';
 
@@ -216,9 +217,7 @@ gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
     // Find indices of the selected cards
     const cardIndices: number[] = [];
     for (const selectedCard of cards) {
-      const index = playerState.hand.findIndex(
-        (c) => c.rank === selectedCard.rank && c.suit === selectedCard.suit
-      );
+      const index = playerState.hand.findIndex(c => cardsEqual(c, selectedCard));
       if (index === -1) {
         return res.status(400).json({
           error: 'Bad request',

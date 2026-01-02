@@ -3,14 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import '@testing-library/jest-dom'
 import { Hand } from './Hand'
-import type { Card } from '@hilo/shared'
+import { createCard, type Card } from '@hilo/shared'
 
 describe('Hand', () => {
   const mockCards: Card[] = [
-    { rank: '2', suit: 'hearts' },
-    { rank: '5', suit: 'diamonds' },
-    { rank: 'A', suit: 'spades' },
-    { rank: '7', suit: 'clubs' },
+    createCard('2', 'hearts'),
+    createCard('5', 'diamonds'),
+    createCard('A', 'spades'),
+    createCard('7', 'clubs'),
   ]
 
   it('renders all cards', () => {
@@ -51,11 +51,11 @@ describe('Hand', () => {
     )
 
     await user.click(screen.getByText('2').closest('div')!)
-    expect(handleClick).toHaveBeenCalledWith({ rank: '2', suit: 'hearts' })
+    expect(handleClick).toHaveBeenCalledWith(mockCards[0])
   })
 
   it('highlights selected cards', () => {
-    const selectedCards: Card[] = [{ rank: '5', suit: 'diamonds' }]
+    const selectedCards: Card[] = [mockCards[1]] // 5 of diamonds
     const { container } = render(
       <Hand cards={mockCards} selectedCards={selectedCards} />
     )
@@ -65,7 +65,7 @@ describe('Hand', () => {
   })
 
   it('highlights playable cards', () => {
-    const playableCards: Card[] = [{ rank: 'A', suit: 'spades' }]
+    const playableCards: Card[] = [mockCards[2]] // A of spades
     const { container } = render(
       <Hand cards={mockCards} playableCards={playableCards} onCardClick={() => {}} />
     )
@@ -76,7 +76,7 @@ describe('Hand', () => {
 
   it('restricts selection to same rank by default', () => {
     const handleClick = vi.fn()
-    const selectedCards: Card[] = [{ rank: '2', suit: 'hearts' }]
+    const selectedCards: Card[] = [mockCards[0]] // 2 of hearts
 
     const { container } = render(
       <Hand
@@ -95,7 +95,7 @@ describe('Hand', () => {
   it('allows mixed ranks when allowMixedRanks is true', async () => {
     const user = userEvent.setup()
     const handleClick = vi.fn()
-    const selectedCards: Card[] = [{ rank: '2', suit: 'hearts' }]
+    const selectedCards: Card[] = [mockCards[0]] // 2 of hearts
 
     render(
       <Hand
@@ -109,7 +109,7 @@ describe('Hand', () => {
 
     // Should be able to click different rank
     await user.click(screen.getByText('5').closest('div')!)
-    expect(handleClick).toHaveBeenCalledWith({ rank: '5', suit: 'diamonds' })
+    expect(handleClick).toHaveBeenCalledWith(mockCards[1])
   })
 
   it('renders with custom size', () => {

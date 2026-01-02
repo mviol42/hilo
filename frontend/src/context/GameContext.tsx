@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useEffect } from 'react'
 import type { ReactNode, Dispatch } from 'react'
-import type { PlayerView, PlayerId, Card } from '@hilo/shared'
+import { type PlayerView, type PlayerId, type Card, cardsEqual } from '@hilo/shared'
 import { socketManager } from '@/services/socket'
 
 interface GameContextState {
@@ -112,16 +112,12 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
       }
     case 'TOGGLE_CARD_SELECTION': {
       const card = action.payload
-      const isSelected = state.selectedCards.some(
-        (c) => c.rank === card.rank && c.suit === card.suit
-      )
+      const isSelected = state.selectedCards.some(c => cardsEqual(c, card))
 
       if (isSelected) {
         return {
           ...state,
-          selectedCards: state.selectedCards.filter(
-            (c) => !(c.rank === card.rank && c.suit === card.suit)
-          ),
+          selectedCards: state.selectedCards.filter(c => !cardsEqual(c, card)),
         }
       }
 

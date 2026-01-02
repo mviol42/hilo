@@ -1,4 +1,4 @@
-import { Card, Rank, Suit, RANK_ORDER, SPECIAL_RANKS, DeckStrategy } from '@hilo/shared';
+import { Card, Rank, Suit, RANK_ORDER, SPECIAL_RANKS, DeckStrategy, cardsEqual } from '@hilo/shared';
 import { GameState, GamePhase } from '@hilo/shared';
 import { PlayerId, PlayerGameState } from '@hilo/shared';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,6 +13,12 @@ export class GameEngineError extends Error {
   }
 }
 
+let cardIdCounter = 0;
+
+function generateCardId(): string {
+  return `${++cardIdCounter}`;
+}
+
 export function createDeck(numPlayers: number, strategy: DeckStrategy = 'standard'): Card[] {
   const numDecks = Math.ceil(numPlayers / 4);
   const cards: Card[] = [];
@@ -20,7 +26,7 @@ export function createDeck(numPlayers: number, strategy: DeckStrategy = 'standar
   for (let d = 0; d < numDecks; d++) {
     for (const suit of SUITS) {
       for (const rank of RANKS) {
-        cards.push({ rank, suit });
+        cards.push({ id: generateCardId(), rank, suit });
       }
     }
   }
@@ -35,7 +41,7 @@ export function createDeck(numPlayers: number, strategy: DeckStrategy = 'standar
       // Standard cards + 1 extra 10 of each suit per deck
       for (let d = 0; d < numDecks; d++) {
         for (const suit of SUITS) {
-          cards.push({ rank: '10', suit });
+          cards.push({ id: generateCardId(), rank: '10', suit });
         }
       }
       return cards;
@@ -392,9 +398,7 @@ export function playCards(
     }
 
     for (const card of cards) {
-      const cardIndex = newPlayerState.hand.findIndex(
-        c => c.rank === card.rank && c.suit === card.suit
-      );
+      const cardIndex = newPlayerState.hand.findIndex(c => cardsEqual(c, card));
       if (cardIndex === -1) {
         throw new GameEngineError('Card not in hand');
       }
@@ -422,9 +426,7 @@ export function playCards(
     }
 
     for (const card of cards) {
-      const cardIndex = newPlayerState.faceUp.findIndex(
-        c => c.rank === card.rank && c.suit === card.suit
-      );
+      const cardIndex = newPlayerState.faceUp.findIndex(c => cardsEqual(c, card));
       if (cardIndex === -1) {
         throw new GameEngineError('Card not in face-up cards');
       }
@@ -545,9 +547,7 @@ export function pickupPile(gameState: GameState, playerId: PlayerId): GameState 
     const sameFaceUpCards = newPlayerState.faceUp.filter(c => c.rank === firstFaceUpRank);
 
     for (const card of sameFaceUpCards) {
-      const idx = newPlayerState.faceUp.findIndex(
-        c => c.rank === card.rank && c.suit === card.suit
-      );
+      const idx = newPlayerState.faceUp.findIndex(c => cardsEqual(c, card));
       if (idx !== -1) {
         const removed = newPlayerState.faceUp.splice(idx, 1)[0];
         newPlayerState.hand.push(removed);
