@@ -6,7 +6,7 @@ import { UIProvider, useUI } from './UIContext'
 
 describe('UIContext', () => {
   function TestComponent() {
-    const { isLoading, setIsLoading, showToast } = useUI()
+    const { isLoading, setIsLoading, showToast, toasts } = useUI()
     return (
       <div>
         <p data-testid="loading">{isLoading ? 'Loading' : 'Not Loading'}</p>
@@ -15,6 +15,12 @@ describe('UIContext', () => {
         <button onClick={() => showToast('Test message', 'success')}>
           Show Toast
         </button>
+        {/* Render toasts so we can test them */}
+        <div data-testid="toasts">
+          {toasts.map((toast) => (
+            <div key={toast.id}>{toast.message}</div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -64,26 +70,28 @@ describe('UIContext', () => {
   it('auto-removes toast after duration', async () => {
     vi.useFakeTimers()
 
-    const user = userEvent.setup({ delay: null })
-
     render(
       <UIProvider>
         <TestComponent />
       </UIProvider>
     )
 
-    await user.click(screen.getByText('Show Toast'))
+    // Manually call showToast through the context
+    const showToastButton = screen.getByText('Show Toast')
+
+    // Use act to wrap the click since it causes state updates
+    await act(async () => {
+      showToastButton.click()
+    })
 
     expect(screen.getByText('Test message')).toBeInTheDocument()
 
     // Fast-forward time by 3 seconds (default duration)
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(3000)
     })
 
-    await waitFor(() => {
-      expect(screen.queryByText('Test message')).not.toBeInTheDocument()
-    })
+    expect(screen.queryByText('Test message')).not.toBeInTheDocument()
 
     vi.useRealTimers()
   })

@@ -12,7 +12,7 @@ describe('TurnIndicator', () => {
 
   const turnOrder = ['player1', 'player2', 'player3']
 
-  it('renders current player turn and next player turn', () => {
+  it('renders current player turn and next player', () => {
     render(
       <TurnIndicator
         activePlayerId="player1"
@@ -23,7 +23,7 @@ describe('TurnIndicator', () => {
     )
 
     expect(screen.getByText("Patrick's Turn")).toBeInTheDocument()
-    expect(screen.getByText("Richard's Turn")).toBeInTheDocument()
+    expect(screen.getByText("Richard is up next")).toBeInTheDocument()
   })
 
   it('shows "Your Turn" when it is current player\'s turn', () => {
@@ -36,11 +36,11 @@ describe('TurnIndicator', () => {
       />
     )
 
-    expect(screen.getAllByText('Your Turn')[0]).toBeInTheDocument()
-    expect(screen.getByText("Richard's Turn")).toBeInTheDocument()
+    expect(screen.getByText('Your Turn')).toBeInTheDocument()
+    expect(screen.getByText("Richard is up next")).toBeInTheDocument()
   })
 
-  it('shows "Your Turn" for the next player when viewing player is on deck', () => {
+  it('shows "You\'re up next" when viewing player is on deck', () => {
     render(
       <TurnIndicator
         activePlayerId="player1"
@@ -51,7 +51,7 @@ describe('TurnIndicator', () => {
     )
 
     expect(screen.getByText("Patrick's Turn")).toBeInTheDocument()
-    expect(screen.getAllByText('Your Turn')[0]).toBeInTheDocument()
+    expect(screen.getByText("You're up next")).toBeInTheDocument()
   })
 
   it('wraps around to first player when active player is last in turn order', () => {
@@ -66,7 +66,7 @@ describe('TurnIndicator', () => {
 
     expect(screen.getByText("Mike's Turn")).toBeInTheDocument()
     // Next player should be player1 (wraps around)
-    expect(screen.getAllByText('Your Turn')[0]).toBeInTheDocument()
+    expect(screen.getByText("You're up next")).toBeInTheDocument()
   })
 
   it('returns null when activePlayerId is not in turnOrder', () => {
@@ -93,8 +93,8 @@ describe('TurnIndicator', () => {
     )
 
     expect(screen.getByText("Patrick's Turn")).toBeInTheDocument()
-    // player2 has no name, should show fallback
-    expect(screen.getByText("Player player2's Turn")).toBeInTheDocument()
+    // player2 has no name, should show fallback (first 8 chars of ID)
+    expect(screen.getByText("Player player2 is up next")).toBeInTheDocument()
   })
 
   it('applies correct styling - current player in white, next in gray', () => {
@@ -108,7 +108,7 @@ describe('TurnIndicator', () => {
     )
 
     const currentPlayer = screen.getByText("Patrick's Turn")
-    const nextPlayer = screen.getByText("Richard's Turn")
+    const nextPlayer = screen.getByText("Richard is up next")
 
     expect(currentPlayer).toHaveClass('text-white')
     expect(nextPlayer).toHaveClass('text-gray-400')

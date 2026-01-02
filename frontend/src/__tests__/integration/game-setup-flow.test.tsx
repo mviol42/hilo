@@ -3,14 +3,16 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom'
 import { GamePage } from '@/pages/GamePage'
-import { AppProviders, GameProvider } from '@/context'
+import { AppProviders } from '@/context'
 import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
+import * as playerUtils from '@/utils/player'
 import type { PlayerView } from '@hilo/shared'
 
 // Mock API and Socket
 vi.mock('@/services/api')
 vi.mock('@/services/socket')
+vi.mock('@/utils/player')
 
 describe('Game Setup Flow Integration', () => {
   let gameStateUpdateCallback: ((data: { gameState: PlayerView }) => void) | null = null
@@ -53,10 +55,16 @@ describe('Game Setup Flow Integration', () => {
     vi.clearAllMocks()
     gameStateUpdateCallback = null
 
+    // Mock player utils - default to player-1
+    vi.mocked(playerUtils.getPlayerId).mockReturnValue('player-1')
+    vi.mocked(playerUtils.getPlayerName).mockReturnValue('Player 1')
+
     // Mock socketManager
     vi.mocked(socketManager.connect).mockReturnValue(undefined as any)
     vi.mocked(socketManager.joinLobby).mockReturnValue(undefined)
     vi.mocked(socketManager.isConnected).mockReturnValue(true)
+    vi.mocked(socketManager.setCurrentGameId).mockReturnValue(undefined)
+    vi.mocked(socketManager.clearCurrentGameId).mockReturnValue(undefined)
 
     // Capture WebSocket event callbacks
     vi.mocked(socketManager.onGameStateUpdate).mockImplementation((callback) => {
@@ -86,7 +94,7 @@ describe('Game Setup Flow Integration', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
+            <Route path="/game" element={<GamePage />} />
           </Routes>
         </AppProviders>
       </MemoryRouter>
@@ -102,11 +110,15 @@ describe('Game Setup Flow Integration', () => {
       expect(screen.getByText(/Setup Phase/i)).toBeInTheDocument()
     })
 
-    // Should see "Select any 3 cards for your face-up pile"
-    expect(screen.getByText(/Select any 3 cards/i)).toBeInTheDocument()
+    // Should see "Select 3 cards for your face-up pile"
+    expect(screen.getByText(/Select 3 cards for your face-up pile/i)).toBeInTheDocument()
   })
 
   it('should handle game start for non-leader (player 2) - REPRODUCES BUG', async () => {
+    // Mock player-2 as the current player
+    vi.mocked(playerUtils.getPlayerId).mockReturnValue('player-2')
+    vi.mocked(playerUtils.getPlayerName).mockReturnValue('Player 2')
+
     // Mock game state for player 2's perspective
     const player2GameState: PlayerView = {
       ...mockGameState,
@@ -134,7 +146,7 @@ describe('Game Setup Flow Integration', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
+            <Route path="/game" element={<GamePage />} />
           </Routes>
         </AppProviders>
       </MemoryRouter>
@@ -167,6 +179,10 @@ describe('Game Setup Flow Integration', () => {
   })
 
   it('should transition player 2 to their turn after player 1 selects cards', async () => {
+    // Mock player-2 as the current player
+    vi.mocked(playerUtils.getPlayerId).mockReturnValue('player-2')
+    vi.mocked(playerUtils.getPlayerName).mockReturnValue('Player 2')
+
     // Start with player 2 waiting
     const player2WaitingState: PlayerView = {
       ...mockGameState,
@@ -198,7 +214,7 @@ describe('Game Setup Flow Integration', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
+            <Route path="/game" element={<GamePage />} />
           </Routes>
         </AppProviders>
       </MemoryRouter>

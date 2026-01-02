@@ -332,7 +332,10 @@ export function GamePage() {
             <Button onClick={handlePlayAgain} variant="success" size="large">
               Play Again
             </Button>
-            <Button onClick={() => navigate('/')} variant="primary" size="large">
+            <Button onClick={() => {
+              gameDispatch({ type: 'CLEAR_GAME_STATE' })
+              navigate('/')
+            }} variant="primary" size="large">
               Back to Menu
             </Button>
           </div>
@@ -451,10 +454,10 @@ export function GamePage() {
         const nextTurnMessage = gameState.activePlayerId === playerId
           ? 'Your turn!'
           : `${gameState.playerNames[gameState.activePlayerId] || 'Opponent'}'s turn`
-        
+
         return (
           <PlayAnimation
-            cards={[]}
+            cards={pilePickupInfo.cards || []}
             playerName={pilePickupInfo.playerName}
             resultMessage={resultMessage}
             resultType={'info'}
@@ -584,7 +587,7 @@ export function GamePage() {
             playableCards={playableCards}
             onCardClick={isMyTurn ? handlePlayCardClick : undefined}
             title={`Your Hand - ${gameState.myHand.length} Card${gameState.myHand.length !== 1 ? 's' : ''}`}
-            headerAction={gameState.myFaceUp.length > 0 ? (
+            headerAction={(gameState.myFaceUp.length > 0 || gameState.myFaceDownCount > 0) ? (
               <button
                 onClick={handleToggleFaceUp}
                 className="text-sm text-gray-400 hover:text-white transition-colors"

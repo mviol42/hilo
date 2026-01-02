@@ -67,7 +67,7 @@ describe('Hand', () => {
   it('highlights playable cards', () => {
     const playableCards: Card[] = [{ rank: 'A', suit: 'spades' }]
     const { container } = render(
-      <Hand cards={mockCards} playableCards={playableCards} />
+      <Hand cards={mockCards} playableCards={playableCards} onCardClick={() => {}} />
     )
 
     const playableCard = container.querySelector('.animate-pulse-green')

@@ -23,6 +23,7 @@ interface GameContextState {
     playerId: PlayerId
     playerName: string
     cardCount: number
+    cards?: Card[]
   } | null
   /** Tracks the last processed stateVersion for idempotent updates */
   lastStateVersion: number
@@ -78,7 +79,7 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
 
         // Set pilePickupInfo if this was a pickup
         if (type === 'pickup_pile' && pickedUpCount !== undefined) {
-          pilePickupInfo = { playerId, playerName, cardCount: pickedUpCount }
+          pilePickupInfo = { playerId, playerName, cardCount: pickedUpCount, cards }
         }
       } else {
         console.log('[GameContext] No lastAction in state update')

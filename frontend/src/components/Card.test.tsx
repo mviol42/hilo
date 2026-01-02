@@ -45,8 +45,8 @@ describe('Card', () => {
     expect(cardElement).toBeInTheDocument()
   })
 
-  it('applies playable animation when playable is true', () => {
-    const { container } = render(<Card card={mockCard} playable />)
+  it('applies playable animation when playable and selectable are true', () => {
+    const { container } = render(<Card card={mockCard} playable selectable />)
     const cardElement = container.querySelector('.animate-pulse-green')
     expect(cardElement).toBeInTheDocument()
   })

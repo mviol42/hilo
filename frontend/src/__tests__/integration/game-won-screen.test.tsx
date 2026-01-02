@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom'
 import { GamePage } from '@/pages/GamePage'
-import { AppProviders, GameProvider } from '@/context'
+import { AppProviders } from '@/context'
 import { socketManager } from '@/services/socket'
 import type { PlayerView } from '@hilo/shared'
 
@@ -44,6 +44,8 @@ describe('Game Won Screen', () => {
     vi.mocked(socketManager.connect).mockReturnValue(undefined as any)
     vi.mocked(socketManager.joinLobby).mockReturnValue(undefined)
     vi.mocked(socketManager.isConnected).mockReturnValue(true)
+    vi.mocked(socketManager.setCurrentGameId).mockReturnValue(undefined)
+    vi.mocked(socketManager.clearCurrentGameId).mockReturnValue(undefined)
 
     // Capture WebSocket event callbacks
     vi.mocked(socketManager.onGameStateUpdate).mockImplementation((callback) => {
@@ -91,7 +93,7 @@ describe('Game Won Screen', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
+            <Route path="/game" element={<GamePage />} />
           </Routes>
         </AppProviders>
       </MemoryRouter>
@@ -148,7 +150,7 @@ describe('Game Won Screen', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
+            <Route path="/game" element={<GamePage />} />
           </Routes>
         </AppProviders>
       </MemoryRouter>
@@ -173,7 +175,7 @@ describe('Game Won Screen', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
+            <Route path="/game" element={<GamePage />} />
           </Routes>
         </AppProviders>
       </MemoryRouter>
@@ -243,7 +245,7 @@ describe('Game Won Screen', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
+            <Route path="/game" element={<GamePage />} />
           </Routes>
         </AppProviders>
       </MemoryRouter>
@@ -281,7 +283,7 @@ describe('Game Won Screen', () => {
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
           <Routes>
-            <Route path="/game" element={<GameProvider><GamePage /></GameProvider>} />
+            <Route path="/game" element={<GamePage />} />
           </Routes>
         </AppProviders>
       </MemoryRouter>
