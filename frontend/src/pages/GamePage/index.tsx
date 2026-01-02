@@ -292,7 +292,9 @@ export function GamePage() {
       setIsLoading(true)
       const response = await apiClient.playAgain({ gameId })
       gameDispatch({ type: 'CLEAR_GAME_STATE' })
-      
+      // Clear the old game ID before navigating to new lobby
+      socketManager.clearCurrentGameId()
+
       // Navigate to join page with the new lobby ID
       navigate(`/join?id=${response.lobbyId}`)
     } catch (error: any) {
@@ -334,6 +336,7 @@ export function GamePage() {
             </Button>
             <Button onClick={() => {
               gameDispatch({ type: 'CLEAR_GAME_STATE' })
+              socketManager.clearCurrentGameId()
               navigate('/')
             }} variant="primary" size="large">
               Back to Menu

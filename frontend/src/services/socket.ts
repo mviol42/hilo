@@ -13,6 +13,15 @@ import type {
   ErrorEvent,
 } from '@hilo/shared'
 import { config } from '@/config'
+import {
+  getPlayerId,
+  getLobbyId,
+  saveLobbyId,
+  clearLobbyId,
+  getGameId,
+  saveGameId,
+  clearGameId,
+} from '@/utils/player'
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>
 
@@ -37,9 +46,17 @@ class SocketManager {
   private connectionStateHandlers: Set<ConnectionStateHandler> = new Set()
 
   // Store lobby/game info for auto-rejoin after reconnection
+  // These are initialized from localStorage to survive page refreshes
   private currentLobbyId: string | null = null
   private currentPlayerId: string | null = null
   private currentGameId: string | null = null
+
+  constructor() {
+    // Restore session from localStorage for page refresh recovery
+    this.currentPlayerId = getPlayerId()
+    this.currentLobbyId = getLobbyId()
+    this.currentGameId = getGameId()
+  }
 
   connect(): TypedSocket {
     if (this.socket?.connected) {
@@ -71,6 +88,9 @@ class SocketManager {
     this.currentLobbyId = null
     this.currentPlayerId = null
     this.currentGameId = null
+    // Clear localStorage session data
+    clearLobbyId()
+    clearGameId()
     this.updateConnectionState('disconnected')
   }
 
@@ -182,19 +202,22 @@ class SocketManager {
     if (!this.socket) {
       throw new Error('Socket not connected')
     }
-    // Store for auto-rejoin after reconnection
+    // Store for auto-rejoin after reconnection (both memory and localStorage)
     this.currentLobbyId = lobbyId
     this.currentPlayerId = playerId
+    saveLobbyId(lobbyId)
     this.socket.emit('lobby:join', { lobbyId, playerId })
   }
 
   // Leave lobby room
   leaveLobby(lobbyId: string, playerId: string): void {
     if (!this.socket) return
-    // Clear stored lobby info
+    // Clear stored lobby info (both memory and localStorage)
     if (this.currentLobbyId === lobbyId) {
       this.currentLobbyId = null
       this.currentPlayerId = null
+      clearLobbyId()
+      clearGameId()
     }
     this.socket.emit('lobby:leave', { lobbyId, playerId })
   }
@@ -207,11 +230,13 @@ class SocketManager {
   // Set current game ID (called when game starts)
   setCurrentGameId(gameId: string): void {
     this.currentGameId = gameId
+    saveGameId(gameId)
   }
 
   // Clear current game ID (called when game ends or player leaves)
   clearCurrentGameId(): void {
     this.currentGameId = null
+    clearGameId()
   }
 
   // Get current game ID
