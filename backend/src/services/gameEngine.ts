@@ -38,9 +38,10 @@ export function createDeck(numPlayers: number, strategy: DeckStrategy = 'standar
       return cards.filter((_, index) => index % 2 === 0);
 
     case 'mega-explosion':
-      // Standard cards + 1 extra 10 of each suit per deck
+      // Standard cards + 2 extra 10s of each suit per deck (3x total)
       for (let d = 0; d < numDecks; d++) {
         for (const suit of SUITS) {
+          cards.push({ id: generateCardId(), rank: '10', suit });
           cards.push({ id: generateCardId(), rank: '10', suit });
         }
       }

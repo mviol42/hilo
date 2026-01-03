@@ -269,7 +269,7 @@ export function LobbyPage() {
                   <p className="text-gray-500 text-xs mt-1">
                     {deckStrategy === 'standard' && 'Full deck with 52 cards per deck'}
                     {deckStrategy === 'quick' && 'Half the standard cards for faster games'}
-                    {deckStrategy === 'mega-explosion' && 'Standard deck + 1 extra 10 of each suit'}
+                    {deckStrategy === 'mega-explosion' && 'Standard deck + 2 extra 10s of each suit'}
                   </p>
                 </div>
                 <Button
