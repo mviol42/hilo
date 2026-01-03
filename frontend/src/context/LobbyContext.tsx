@@ -61,11 +61,12 @@ export function LobbyProvider({ children }: { children: ReactNode }) {
     connectedToLobby: false,
   })
 
-  // Set up WebSocket listeners
+  // Set up WebSocket listeners BEFORE connecting
+  // This ensures listeners are ready when socket connects and events are fired
   useEffect(() => {
-    socketManager.connect()
     const cleanupFns: Array<() => void> = []
 
+    // Register all listeners first - these will be queued until socket connects
     cleanupFns.push(
       socketManager.onLobbyPlayerJoined((data) => {
         dispatch({ type: 'PLAYER_JOINED', payload: data })
@@ -89,6 +90,9 @@ export function LobbyProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'LEADER_CHANGED', payload: data })
       })
     )
+
+    // Now connect the socket - listeners are registered and ready
+    socketManager.connect()
 
     return () => {
       cleanupFns.forEach((cleanup) => cleanup())

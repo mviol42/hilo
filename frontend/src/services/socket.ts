@@ -51,6 +51,11 @@ class SocketManager {
   private currentPlayerId: string | null = null
   private currentGameId: string | null = null
 
+  // Store pending event listeners registered before socket is created
+  // This ensures listeners are attached before the socket connects
+  private pendingListeners: Array<{ event: string; handler: Function }> = []
+  private listenersAttached = false
+
   constructor() {
     // Restore session from localStorage for page refresh recovery
     this.currentPlayerId = getPlayerId()
@@ -58,26 +63,57 @@ class SocketManager {
     this.currentGameId = getGameId()
   }
 
+  /**
+   * Initialize the socket (but don't connect yet).
+   * This allows listeners to be registered before connection.
+   */
+  private ensureSocketExists(): void {
+    if (this.socket) return
+
+    // Create socket with autoConnect: false to prevent immediate connection
+    this.socket = io(config.wsUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000,
+      randomizationFactor: 0.5,
+      reconnectionAttempts: this.maxReconnectAttempts,
+      autoConnect: false, // Critical: don't connect until listeners are attached
+    })
+
+    this.setupConnectionHandlers()
+  }
+
+  /**
+   * Attach all pending listeners to the socket.
+   * This is called before connecting to ensure no events are missed.
+   */
+  private attachPendingListeners(): void {
+    if (!this.socket || this.listenersAttached) return
+
+    console.log(`[Socket] Attaching ${this.pendingListeners.length} pending listeners`)
+    for (const { event, handler } of this.pendingListeners) {
+      this.socket.on(event as any, handler as any)
+    }
+    this.listenersAttached = true
+  }
+
   connect(): TypedSocket {
     if (this.socket?.connected) {
       return this.socket
     }
 
+    // Ensure socket exists
+    this.ensureSocketExists()
+
+    // Attach all pending listeners before connecting
+    this.attachPendingListeners()
+
+    // Now connect the socket - listeners are ready to receive events
     this.updateConnectionState('connecting')
+    this.socket!.connect()
 
-    this.socket = io(config.wsUrl, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (capped)
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 30000,
-      randomizationFactor: 0.5,
-      reconnectionAttempts: this.maxReconnectAttempts,
-    })
-
-    this.setupConnectionHandlers()
-
-    return this.socket
+    return this.socket!
   }
 
   disconnect(): void {
@@ -120,8 +156,15 @@ class SocketManager {
           playerId: this.currentPlayerId,
         })
 
-        // Note: Game state request is NOT done here because listeners may not be set up yet.
-        // Instead, GameContext will request game state after its listeners are ready.
+        // If we're in an active game, request current state
+        // Listeners are guaranteed to be ready at this point
+        if (this.currentGameId) {
+          console.log('[Socket] Requesting game state for game:', this.currentGameId)
+          this.socket?.emit('game:requestState', {
+            gameId: this.currentGameId,
+            playerId: this.currentPlayerId,
+          })
+        }
       }
     })
 
@@ -246,60 +289,73 @@ class SocketManager {
     this.socket.emit('game:requestState', { gameId, playerId })
   }
 
-  // Event listeners
+  // Event listeners - can be called before socket is connected
+
+  /**
+   * Register an event listener.
+   * If socket doesn't exist yet, queues the listener for later attachment.
+   * If socket exists but not connected, attaches immediately.
+   * This ensures listeners are ready before any events are received.
+   */
+  private registerListener<T>(event: string, handler: SocketEventHandler<T>): () => void {
+    // Ensure socket is created (but not yet connected)
+    this.ensureSocketExists()
+
+    // If listeners haven't been attached yet, queue this one
+    if (!this.listenersAttached) {
+      this.pendingListeners.push({ event, handler })
+    } else {
+      // Listeners already attached (socket is connected), attach immediately
+      this.socket?.on(event as any, handler as any)
+    }
+
+    // Return cleanup function
+    return () => {
+      this.socket?.off(event as any, handler as any)
+      // Also remove from pending if it's there
+      const index = this.pendingListeners.findIndex(
+        (l) => l.event === event && l.handler === handler
+      )
+      if (index !== -1) {
+        this.pendingListeners.splice(index, 1)
+      }
+    }
+  }
 
   onLobbyPlayerJoined(handler: SocketEventHandler<LobbyPlayerJoinedEvent>): () => void {
-    if (!this.socket) throw new Error('Socket not connected')
-    this.socket.on('lobby:playerJoined', handler)
-    return () => this.socket?.off('lobby:playerJoined', handler)
+    return this.registerListener('lobby:playerJoined', handler)
   }
 
   onLobbyPlayerReadied(handler: SocketEventHandler<LobbyPlayerReadiedEvent>): () => void {
-    if (!this.socket) throw new Error('Socket not connected')
-    this.socket.on('lobby:playerReadied', handler)
-    return () => this.socket?.off('lobby:playerReadied', handler)
+    return this.registerListener('lobby:playerReadied', handler)
   }
 
   onLobbyPlayerLeft(handler: SocketEventHandler<LobbyPlayerLeftEvent>): () => void {
-    if (!this.socket) throw new Error('Socket not connected')
-    this.socket.on('lobby:playerLeft', handler)
-    return () => this.socket?.off('lobby:playerLeft', handler)
+    return this.registerListener('lobby:playerLeft', handler)
   }
 
   onLobbyLeaderChanged(handler: SocketEventHandler<LobbyLeaderChangedEvent>): () => void {
-    if (!this.socket) throw new Error('Socket not connected')
-    this.socket.on('lobby:leaderChanged', handler)
-    return () => this.socket?.off('lobby:leaderChanged', handler)
+    return this.registerListener('lobby:leaderChanged', handler)
   }
 
   onLobbyGameStarting(handler: SocketEventHandler<LobbyGameStartingEvent>): () => void {
-    if (!this.socket) throw new Error('Socket not connected')
-    this.socket.on('lobby:gameStarting', handler)
-    return () => this.socket?.off('lobby:gameStarting', handler)
+    return this.registerListener('lobby:gameStarting', handler)
   }
 
   onGameStateUpdate(handler: SocketEventHandler<GameStateUpdateEvent>): () => void {
-    if (!this.socket) throw new Error('Socket not connected')
-    this.socket.on('game:stateUpdate', handler)
-    return () => this.socket?.off('game:stateUpdate', handler)
+    return this.registerListener('game:stateUpdate', handler)
   }
 
   onGameTurnChange(handler: SocketEventHandler<GameTurnChangeEvent>): () => void {
-    if (!this.socket) throw new Error('Socket not connected')
-    this.socket.on('game:turnChange', handler)
-    return () => this.socket?.off('game:turnChange', handler)
+    return this.registerListener('game:turnChange', handler)
   }
 
   onGamePlayerWon(handler: SocketEventHandler<GamePlayerWonEvent>): () => void {
-    if (!this.socket) throw new Error('Socket not connected')
-    this.socket.on('game:playerWon', handler)
-    return () => this.socket?.off('game:playerWon', handler)
+    return this.registerListener('game:playerWon', handler)
   }
 
   onError(handler: SocketEventHandler<ErrorEvent>): () => void {
-    if (!this.socket) throw new Error('Socket not connected')
-    this.socket.on('error', handler)
-    return () => this.socket?.off('error', handler)
+    return this.registerListener('error', handler)
   }
 
   isConnected(): boolean {

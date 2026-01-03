@@ -67,18 +67,15 @@ export function GamePage() {
     // This handles the case where the user navigates directly to the game page
     // or refreshes during a game
     if (!gameState && playerId) {
-      // Small delay to ensure GameContext listeners are set up first
-      // This is needed because on page refresh, the socket connect handler
-      // and GameContext listener setup race with each other
-      const timeout = setTimeout(() => {
-        if (socketManager.isConnected()) {
-          console.log('[GamePage] Requesting game state for refresh recovery')
-          socketManager.requestGameState(gameId, playerId)
-        }
-      }, 150)
-      return () => clearTimeout(timeout)
+      // Listeners are guaranteed to be registered before socket connects
+      // so we can request state immediately if connected
+      if (socketManager.isConnected()) {
+        console.log('[GamePage] Requesting game state for refresh recovery')
+        socketManager.requestGameState(gameId, playerId)
+      }
+      // If not connected yet, the socket's connect handler will auto-request state
     }
-  }, [gameId, navigate, gameState, playerId, showToast])
+  }, [gameId, navigate, gameState, playerId])
 
   // Handle game events - clear events after processing
   useEffect(() => {

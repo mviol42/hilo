@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
 import { usePlayer, useLobby, useUI, useGame } from '@/context'
-import { Button, Input, PlayerList, LoadingSpinner } from '@/components'
+import { Button, Input, PlayerList } from '@/components'
 import { copyToClipboard, getLobbyShareLink } from '@/utils/url'
 import type { DeckStrategy } from '@hilo/shared';
 
@@ -26,30 +26,20 @@ export function LobbyPage() {
   const [nameInput, setNameInput] = useState(playerName || '')
   const [isReady, setIsReady] = useState(false)
   const [deckStrategy, setDeckStrategy] = useState<DeckStrategy>('standard')
-  const [isCheckingLobby, setIsCheckingLobby] = useState(true)
-  const [lobbyError, setLobbyError] = useState<string | null>(null)
-
-  // Track if player is verified to be in lobby (prevents re-checking on state updates)
-  const [isVerified, setIsVerified] = useState(false)
 
   // Check lobby access - verify player is in lobby
+  // Re-runs on lobby updates to handle edge cases (e.g., player kicked by server)
   useEffect(() => {
-    // Already verified - don't re-check
-    if (isVerified) {
-      return
-    }
-
     if (!lobbyId) {
       navigate('/')
       return
     }
 
-    // If we already have lobby state for this lobby, verify player is in it
+    // If we have lobby state for this lobby, verify player is in it
     if (lobby && lobby.id === lobbyId) {
       const isInLobby = lobby.players.some(p => p.id === playerId)
       if (isInLobby) {
-        setIsCheckingLobby(false)
-        setIsVerified(true)
+        // Player is in the lobby - all good!
         return
       }
       // Have lobby state but player not in it - redirect to join
@@ -57,40 +47,10 @@ export function LobbyPage() {
       return
     }
 
-    // No lobby state yet - check with server after a short delay
-    // This delay allows for lobby state to be set from context (e.g., after navigation from JoinPage)
-    const timeoutId = setTimeout(async () => {
-      // Re-check if lobby state arrived during the delay
-      // Note: We can't access the latest `lobby` here due to closure,
-      // so we check isVerified which would be set by a re-run of this effect
-      try {
-        const status = await apiClient.getLobbyStatus(lobbyId)
-
-        if (!status.exists) {
-          setLobbyError('This lobby no longer exists.')
-          setIsCheckingLobby(false)
-          setTimeout(() => navigate('/'), 2000)
-          return
-        }
-
-        if (status.gameStarted) {
-          setLobbyError('This game has already started.')
-          setIsCheckingLobby(false)
-          setTimeout(() => navigate('/'), 2000)
-          return
-        }
-
-        // Lobby exists and game hasn't started - redirect to join page
-        navigate(`/join?id=${lobbyId}`)
-      } catch (error) {
-        console.error('Failed to check lobby status:', error)
-        setLobbyError('Failed to connect. Please try again.')
-        setIsCheckingLobby(false)
-      }
-    }, 100) // Small delay to allow state to settle
-
-    return () => clearTimeout(timeoutId)
-  }, [lobbyId, playerId, lobby, navigate, isVerified])
+    // No lobby state yet - redirect to join page
+    // The join page will handle joining the lobby or showing appropriate errors
+    navigate(`/join?id=${lobbyId}`)
+  }, [lobbyId, playerId, lobby, navigate])
 
   // Set up WebSocket listener for game starting
   useEffect(() => {
@@ -221,30 +181,6 @@ export function LobbyPage() {
 
   if (!lobbyId) {
     return null
-  }
-
-  // Show loading state while checking lobby access
-  if (isCheckingLobby) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-          <LoadingSpinner />
-          <p className="mt-4 text-gray-600">Checking lobby status...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Show error state
-  if (lobbyError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-          <p className="text-red-600 text-lg font-medium">{lobbyError}</p>
-          <p className="mt-2 text-gray-600">Redirecting to home...</p>
-        </div>
-      </div>
-    )
   }
 
   // Check if all non-leader players are ready
