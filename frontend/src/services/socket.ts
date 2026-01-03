@@ -51,11 +51,6 @@ class SocketManager {
   private currentPlayerId: string | null = null
   private currentGameId: string | null = null
 
-  // Store pending event listeners registered before socket is created
-  // This ensures listeners are attached before the socket connects
-  private pendingListeners: Array<{ event: string; handler: Function }> = []
-  private listenersAttached = false
-
   constructor() {
     // Restore session from localStorage for page refresh recovery
     this.currentPlayerId = getPlayerId()
@@ -71,6 +66,7 @@ class SocketManager {
     if (this.socket) return
 
     // Create socket with autoConnect: false to prevent immediate connection
+    // Listeners can be attached before calling connect()
     this.socket = io(config.wsUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -84,32 +80,15 @@ class SocketManager {
     this.setupConnectionHandlers()
   }
 
-  /**
-   * Attach all pending listeners to the socket.
-   * This is called before connecting to ensure no events are missed.
-   */
-  private attachPendingListeners(): void {
-    if (!this.socket || this.listenersAttached) return
-
-    console.log(`[Socket] Attaching ${this.pendingListeners.length} pending listeners`)
-    for (const { event, handler } of this.pendingListeners) {
-      this.socket.on(event as any, handler as any)
-    }
-    this.listenersAttached = true
-  }
-
   connect(): TypedSocket {
     if (this.socket?.connected) {
       return this.socket
     }
 
-    // Ensure socket exists
+    // Ensure socket exists (listeners already attached via registerListener)
     this.ensureSocketExists()
 
-    // Attach all pending listeners before connecting
-    this.attachPendingListeners()
-
-    // Now connect the socket - listeners are ready to receive events
+    // Connect - all listeners are ready
     this.updateConnectionState('connecting')
     this.socket!.connect()
 
@@ -293,32 +272,20 @@ class SocketManager {
 
   /**
    * Register an event listener.
-   * If socket doesn't exist yet, queues the listener for later attachment.
-   * If socket exists but not connected, attaches immediately.
-   * This ensures listeners are ready before any events are received.
+   * Ensures socket exists and attaches the listener immediately.
+   * Since socket is created with autoConnect: false, listeners are
+   * attached before connection happens (coordinated by AppProviders).
    */
   private registerListener<T>(event: string, handler: SocketEventHandler<T>): () => void {
     // Ensure socket is created (but not yet connected)
     this.ensureSocketExists()
 
-    // If listeners haven't been attached yet, queue this one
-    if (!this.listenersAttached) {
-      this.pendingListeners.push({ event, handler })
-    } else {
-      // Listeners already attached (socket is connected), attach immediately
-      this.socket?.on(event as any, handler as any)
-    }
+    // Attach listener directly - socket won't connect until connect() is called
+    this.socket!.on(event as any, handler as any)
 
     // Return cleanup function
     return () => {
       this.socket?.off(event as any, handler as any)
-      // Also remove from pending if it's there
-      const index = this.pendingListeners.findIndex(
-        (l) => l.event === event && l.handler === handler
-      )
-      if (index !== -1) {
-        this.pendingListeners.splice(index, 1)
-      }
     }
   }
 
