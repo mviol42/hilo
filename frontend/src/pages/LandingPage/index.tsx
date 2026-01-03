@@ -41,7 +41,6 @@ export function LandingPage() {
       lobbyDispatch({ type: 'SET_LOBBY', payload: joinResponse.lobby })
 
       // Connect to WebSocket room
-      socketManager.connect()
       socketManager.joinLobby(lobbyId, playerId)
 
       // Navigate to lobby page
@@ -80,8 +79,7 @@ export function LandingPage() {
       // Update lobby context
       lobbyDispatch({ type: 'SET_LOBBY', payload: joinResponse.lobby })
 
-      // Connect to WebSocket room
-      socketManager.connect()
+      // Join WebSocket room
       socketManager.joinLobby(lobbyIdInput.trim(), playerId)
 
       // Navigate to lobby page

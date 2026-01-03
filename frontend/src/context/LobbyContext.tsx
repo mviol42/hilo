@@ -63,7 +63,6 @@ export function LobbyProvider({ children }: { children: ReactNode }) {
 
   // Set up WebSocket listeners
   useEffect(() => {
-    socketManager.connect()
     const cleanupFns: Array<() => void> = []
 
     cleanupFns.push(

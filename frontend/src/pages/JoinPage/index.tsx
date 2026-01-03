@@ -47,7 +47,6 @@ export function JoinPage() {
       lobbyDispatch({ type: 'SET_LOBBY', payload: joinResponse.lobby })
 
       // Connect to WebSocket room
-      socketManager.connect()
       socketManager.joinLobby(lobbyId.trim(), playerId)
 
       // Navigate to lobby page
