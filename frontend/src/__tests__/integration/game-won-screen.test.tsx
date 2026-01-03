@@ -5,7 +5,7 @@ import '@testing-library/jest-dom'
 import { GamePage } from '@/pages/GamePage'
 import { AppProviders } from '@/context'
 import { socketManager } from '@/services/socket'
-import type { PlayerView } from '@hilo/shared'
+import { createCard, type PlayerView } from '@hilo/shared'
 
 // Mock API and Socket
 vi.mock('@/services/api')
@@ -84,7 +84,7 @@ describe('Game Won Screen', () => {
         type: 'play_cards',
         playerId: 'player-1',
         playerName: 'Player 1',
-        cards: [{ rank: 'A', suit: 'spades' }],
+        cards: [createCard('A', 'spades')],
         timestamp: new Date().toISOString(),
       },
     }
@@ -124,7 +124,7 @@ describe('Game Won Screen', () => {
     const lostGameState: PlayerView = {
       id: 'game-123',
       phase: 'ended',
-      myHand: [{ rank: '2', suit: 'hearts' }],
+      myHand: [createCard('2', 'hearts')],
       myFaceUp: [],
       myFaceDownCount: 0,
       myFaceDownPlayed: [true, true, true],
@@ -141,7 +141,7 @@ describe('Game Won Screen', () => {
         type: 'play_cards',
         playerId: 'player-2',
         playerName: 'Player 2',
-        cards: [{ rank: 'K', suit: 'hearts' }],
+        cards: [createCard('K', 'hearts')],
         timestamp: new Date().toISOString(),
       },
     }
@@ -205,7 +205,7 @@ describe('Game Won Screen', () => {
         type: 'play_cards',
         playerId: 'player-1',
         playerName: 'Player 1',
-        cards: [{ rank: '10', suit: 'diamonds' }],
+        cards: [createCard('10', 'diamonds')],
         timestamp: new Date().toISOString(),
       },
     }
@@ -295,6 +295,113 @@ describe('Game Won Screen', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Play Again/i)).toBeInTheDocument()
+    })
+  })
+
+  it('clears game ID when play again button is clicked', async () => {
+    const { apiClient } = await import('@/services/api')
+
+    // Mock the playAgain API call
+    vi.mocked(apiClient.playAgain).mockResolvedValue({
+      lobbyId: 'new-lobby-123',
+    })
+
+    const endedState: PlayerView = {
+      id: 'game-123',
+      phase: 'ended',
+      myHand: [],
+      myFaceUp: [],
+      myFaceDownCount: 0,
+      myFaceDownPlayed: [true, true, true],
+      otherPlayers: {},
+      pile: [],
+      deckCount: 0,
+      activePlayerId: 'player-1',
+      winner: 'player-1',
+      winnerName: 'Player 1',
+      playerNames: { 'player-1': 'Player 1' },
+      turnOrder: ['player-1'],
+      stateVersion: 10,
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/game?id=game-123']}>
+        <AppProviders>
+          <Routes>
+            <Route path="/game" element={<GamePage />} />
+            <Route path="/join" element={<div>Join Page</div>} />
+          </Routes>
+        </AppProviders>
+      </MemoryRouter>
+    )
+
+    if (gameStateUpdateCallback) {
+      gameStateUpdateCallback({ gameState: endedState })
+    }
+
+    // Wait for and click the Play Again button
+    const playAgainButton = await screen.findByText(/Play Again/i)
+    expect(playAgainButton).toBeInTheDocument()
+
+    playAgainButton.click()
+
+    // Verify clearCurrentGameId was called
+    await waitFor(() => {
+      expect(socketManager.clearCurrentGameId).toHaveBeenCalled()
+    })
+
+    // Verify API was called with correct game ID
+    expect(apiClient.playAgain).toHaveBeenCalledWith({ gameId: 'game-123' })
+  })
+
+  it('clears game ID when back to menu button is clicked', async () => {
+    const endedState: PlayerView = {
+      id: 'game-123',
+      phase: 'ended',
+      myHand: [],
+      myFaceUp: [],
+      myFaceDownCount: 0,
+      myFaceDownPlayed: [true, true, true],
+      otherPlayers: {},
+      pile: [],
+      deckCount: 0,
+      activePlayerId: 'player-1',
+      winner: 'player-1',
+      winnerName: 'Player 1',
+      playerNames: { 'player-1': 'Player 1' },
+      turnOrder: ['player-1'],
+      stateVersion: 10,
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/game?id=game-123']}>
+        <AppProviders>
+          <Routes>
+            <Route path="/game" element={<GamePage />} />
+            <Route path="/" element={<div>Home Page</div>} />
+          </Routes>
+        </AppProviders>
+      </MemoryRouter>
+    )
+
+    if (gameStateUpdateCallback) {
+      gameStateUpdateCallback({ gameState: endedState })
+    }
+
+    // Wait for and click the Back to Menu button
+    const backToMenuButton = await screen.findByText(/Back to Menu/i)
+    expect(backToMenuButton).toBeInTheDocument()
+
+    backToMenuButton.click()
+
+    // Verify clearCurrentGameId was called
+    await waitFor(() => {
+      expect(socketManager.clearCurrentGameId).toHaveBeenCalled()
+    })
+
+    // Verify navigation to home page
+    await waitFor(() => {
+      expect(screen.getByText('Home Page')).toBeInTheDocument()
     })
   })
 })

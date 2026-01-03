@@ -2,7 +2,7 @@ import { render, screen, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import '@testing-library/jest-dom'
 import { PlayAnimation } from './PlayAnimation'
-import type { Card } from '@hilo/shared'
+import { createCard, type Card } from '@hilo/shared'
 
 describe('PlayAnimation', () => {
   beforeEach(() => {
@@ -14,8 +14,8 @@ describe('PlayAnimation', () => {
   })
 
   const mockCards: Card[] = [
-    { rank: '5', suit: 'hearts' },
-    { rank: '5', suit: 'diamonds' },
+    createCard('5', 'hearts'),
+    createCard('5', 'diamonds'),
   ]
 
   it('renders with cards and player name', () => {
@@ -241,7 +241,7 @@ describe('PlayAnimation', () => {
 
       render(
         <PlayAnimation
-          cards={[{ rank: '5', suit: 'hearts' }]}
+          cards={[createCard('5', 'hearts')]}
           playerName="Alice"
           onComplete={onComplete}
         />
@@ -255,7 +255,7 @@ describe('PlayAnimation', () => {
 
       render(
         <PlayAnimation
-          cards={[{ rank: '6', suit: 'diamonds' }]}
+          cards={[createCard('6', 'diamonds')]}
           playerName="Bob"
           onComplete={onComplete}
         />
@@ -269,7 +269,7 @@ describe('PlayAnimation', () => {
 
       render(
         <PlayAnimation
-          cards={[{ rank: '7', suit: 'clubs' }]}
+          cards={[createCard('7', 'clubs')]}
           playerName="Charlie"
           onComplete={onComplete}
         />
@@ -283,7 +283,7 @@ describe('PlayAnimation', () => {
 
       render(
         <PlayAnimation
-          cards={[{ rank: '10', suit: 'spades' }]}
+          cards={[createCard('10', 'spades')]}
           playerName="Bob"
           resultMessage="Pile blown up!"
           resultType="success"
@@ -300,7 +300,7 @@ describe('PlayAnimation', () => {
 
       render(
         <PlayAnimation
-          cards={[{ rank: '5', suit: 'hearts' }]}
+          cards={[createCard('5', 'hearts')]}
           playerName="Alice"
           nextTurnMessage="Bob's turn"
           onComplete={onComplete}
@@ -316,7 +316,7 @@ describe('PlayAnimation', () => {
 
       render(
         <PlayAnimation
-          cards={[{ rank: '10', suit: 'clubs' }]}
+          cards={[createCard('10', 'clubs')]}
           playerName="Bob"
           resultMessage="Go again!"
           resultType="success"
@@ -333,7 +333,7 @@ describe('PlayAnimation', () => {
 
       render(
         <PlayAnimation
-          cards={[{ rank: '7', suit: 'spades' }]}
+          cards={[createCard('7', 'spades')]}
           playerName="Charlie"
           nextTurnMessage="Alice's turn"
           onComplete={onComplete}

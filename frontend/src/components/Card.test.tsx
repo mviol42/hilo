@@ -2,10 +2,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import '@testing-library/jest-dom'
+import { createCard } from '@hilo/shared'
 import { Card } from './Card'
 
 describe('Card', () => {
-  const mockCard = { rank: 'A' as const, suit: 'hearts' as const }
+  const mockCard = createCard('A', 'hearts')
 
   it('renders card rank and suit', () => {
     render(<Card card={mockCard} />)
@@ -77,10 +78,10 @@ describe('Card', () => {
 
   it('renders red suits in red color', () => {
     const { container: heartsContainer } = render(
-      <Card card={{ rank: 'K', suit: 'hearts' }} />
+      <Card card={createCard('K', 'hearts')} />
     )
     const { container: diamondsContainer } = render(
-      <Card card={{ rank: 'Q', suit: 'diamonds' }} />
+      <Card card={createCard('Q', 'diamonds')} />
     )
 
     expect(heartsContainer.querySelector('.text-red-600')).toBeInTheDocument()
@@ -89,10 +90,10 @@ describe('Card', () => {
 
   it('renders black suits in black color', () => {
     const { container: clubsContainer } = render(
-      <Card card={{ rank: 'J', suit: 'clubs' }} />
+      <Card card={createCard('J', 'clubs')} />
     )
     const { container: spadesContainer } = render(
-      <Card card={{ rank: '10', suit: 'spades' }} />
+      <Card card={createCard('10', 'spades')} />
     )
 
     expect(clubsContainer.querySelector('.text-gray-900')).toBeInTheDocument()
@@ -100,10 +101,10 @@ describe('Card', () => {
   })
 
   it('displays correct suit symbols', () => {
-    render(<Card card={{ rank: '2', suit: 'hearts' }} />)
-    render(<Card card={{ rank: '3', suit: 'diamonds' }} />)
-    render(<Card card={{ rank: '4', suit: 'clubs' }} />)
-    render(<Card card={{ rank: '5', suit: 'spades' }} />)
+    render(<Card card={createCard('2', 'hearts')} />)
+    render(<Card card={createCard('3', 'diamonds')} />)
+    render(<Card card={createCard('4', 'clubs')} />)
+    render(<Card card={createCard('5', 'spades')} />)
 
     expect(screen.getByText('♥')).toBeInTheDocument()
     expect(screen.getByText('♦')).toBeInTheDocument()

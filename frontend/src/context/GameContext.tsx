@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useEffect } from 'react'
 import type { ReactNode, Dispatch } from 'react'
-import type { PlayerView, PlayerId, Card } from '@hilo/shared'
+import { type PlayerView, type PlayerId, type Card, cardsEqual } from '@hilo/shared'
 import { socketManager } from '@/services/socket'
 
 interface GameContextState {
@@ -112,16 +112,12 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
       }
     case 'TOGGLE_CARD_SELECTION': {
       const card = action.payload
-      const isSelected = state.selectedCards.some(
-        (c) => c.rank === card.rank && c.suit === card.suit
-      )
+      const isSelected = state.selectedCards.some(c => cardsEqual(c, card))
 
       if (isSelected) {
         return {
           ...state,
-          selectedCards: state.selectedCards.filter(
-            (c) => !(c.rank === card.rank && c.suit === card.suit)
-          ),
+          selectedCards: state.selectedCards.filter(c => !cardsEqual(c, card)),
         }
       }
 
@@ -206,55 +202,40 @@ export function GameProvider({ children }: { children: ReactNode }) {
     lastStateVersion: -1, // Start at -1 to accept any initial state (version 0+)
   })
 
-  // Set up WebSocket listeners
+  // Register WebSocket listeners
+  // Note: Socket connection is coordinated by AppProviders to ensure
+  // all contexts (Lobby, Game, etc.) register listeners before connecting
   useEffect(() => {
-    // Wait for socket to be connected before setting up listeners
-    const setupListeners = () => {
-      if (!socketManager.isConnected()) {
-        console.log('[GameContext] Socket not connected, waiting...')
-        // Retry after a short delay
-        const timeout = setTimeout(setupListeners, 100)
-        return () => clearTimeout(timeout)
-      }
+    console.log('[GameContext] Registering game event listeners')
+    const cleanupFns: Array<() => void> = []
 
-      const cleanupFns: Array<() => void> = []
+    cleanupFns.push(
+      socketManager.onGameStateUpdate((data) => {
+        console.log('[GameContext] Received game state update:', data.gameState.phase)
+        dispatch({ type: 'SET_GAME_STATE', payload: data.gameState })
+      })
+    )
 
-      try {
-        console.log('[GameContext] Setting up game event listeners')
+    cleanupFns.push(
+      socketManager.onGameTurnChange((data) => {
+        console.log('[GameContext] Turn changed to:', data.activePlayerId)
+        dispatch({ type: 'TURN_CHANGED', payload: data })
+      })
+    )
 
-        cleanupFns.push(
-          socketManager.onGameStateUpdate((data) => {
-            console.log('[GameContext] Received game state update:', data.gameState.phase)
-            dispatch({ type: 'SET_GAME_STATE', payload: data.gameState })
-          })
-        )
+    // Note: pileBlown info is now read from lastAction in game:stateUpdate
 
-        cleanupFns.push(
-          socketManager.onGameTurnChange((data) => {
-            console.log('[GameContext] Turn changed to:', data.activePlayerId)
-            dispatch({ type: 'TURN_CHANGED', payload: data })
-          })
-        )
+    cleanupFns.push(
+      socketManager.onGamePlayerWon((data) => {
+        console.log('[GameContext] Player won:', data.winnerId)
+        dispatch({ type: 'PLAYER_WON', payload: data })
+      })
+    )
 
-        // Note: pileBlown info is now read from lastAction in game:stateUpdate
-
-        cleanupFns.push(
-          socketManager.onGamePlayerWon((data) => {
-            console.log('[GameContext] Player won:', data.winnerId)
-            dispatch({ type: 'PLAYER_WON', payload: data })
-          })
-        )
-      } catch (error) {
-        console.error('Failed to set up game event listeners:', error)
-      }
-
-      return () => {
-        console.log('[GameContext] Cleaning up game event listeners')
-        cleanupFns.forEach((cleanup) => cleanup())
-      }
+    return () => {
+      console.log('[GameContext] Cleaning up game event listeners')
+      cleanupFns.forEach((cleanup) => cleanup())
     }
-
-    return setupListeners()
   }, [])
 
   return (

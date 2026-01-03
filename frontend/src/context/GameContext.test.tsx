@@ -2,7 +2,7 @@ import { render, screen, renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom'
 import { GameProvider, useGame } from './GameContext'
-import type { PlayerView } from '@hilo/shared'
+import { createCard, type PlayerView } from '@hilo/shared'
 
 // Mock the socket manager to prevent WebSocket setup
 vi.mock('@/services/socket', () => ({
@@ -104,7 +104,7 @@ describe('GameContext', () => {
           type: 'play_cards',
           playerId: 'player-1',
           playerName: 'Alice',
-          cards: [{ rank: '5', suit: 'hearts' }, { rank: '5', suit: 'diamonds' }],
+          cards: [createCard('5', 'hearts'), createCard('5', 'diamonds')],
           timestamp: new Date().toISOString(),
         },
       }
@@ -155,7 +155,7 @@ describe('GameContext', () => {
           type: 'blow_up',
           playerId: 'player-1',
           playerName: 'Alice',
-          cards: [{ rank: '10', suit: 'spades' }],
+          cards: [createCard('10', 'spades')],
           blowUpReason: 'ten',
           timestamp: new Date().toISOString(),
         },
@@ -211,7 +211,7 @@ describe('GameContext', () => {
           type: 'blow_up',
           playerId: 'player-1',
           playerName: 'Alice',
-          cards: [{ rank: '7', suit: 'clubs' }],
+          cards: [createCard('7', 'clubs')],
           blowUpReason: 'four_of_kind',
           timestamp: new Date().toISOString(),
         },
@@ -404,7 +404,7 @@ describe('GameContext', () => {
           'player-2': { name: 'Bob', handCount: 5, faceUp: [], faceDownCount: 3 },
           'player-3': { name: 'Charlie', handCount: 5, faceUp: [], faceDownCount: 3 },
         },
-        pile: [{ rank: '5', suit: 'hearts' }],
+        pile: [createCard('5', 'hearts')],
         deckCount: 30,
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
@@ -414,7 +414,7 @@ describe('GameContext', () => {
           type: 'play_cards',
           playerId: 'player-1',
           playerName: 'Alice',
-          cards: [{ rank: '5', suit: 'hearts' }],
+          cards: [createCard('5', 'hearts')],
           timestamp: new Date().toISOString(),
         },
       }
@@ -452,7 +452,7 @@ describe('GameContext', () => {
           'player-2': { name: 'Bob', handCount: 4, faceUp: [], faceDownCount: 3 },
           'player-3': { name: 'Charlie', handCount: 5, faceUp: [], faceDownCount: 3 },
         },
-        pile: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }],
+        pile: [createCard('5', 'hearts'), createCard('6', 'diamonds')],
         deckCount: 29,
         activePlayerId: 'player-3',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
@@ -462,7 +462,7 @@ describe('GameContext', () => {
           type: 'play_cards',
           playerId: 'player-2',
           playerName: 'Bob',
-          cards: [{ rank: '6', suit: 'diamonds' }],
+          cards: [createCard('6', 'diamonds')],
           timestamp: new Date().toISOString(),
         },
       }
@@ -500,7 +500,7 @@ describe('GameContext', () => {
           'player-2': { name: 'Bob', handCount: 4, faceUp: [], faceDownCount: 3 },
           'player-3': { name: 'Charlie', handCount: 4, faceUp: [], faceDownCount: 3 },
         },
-        pile: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }, { rank: '7', suit: 'clubs' }],
+        pile: [createCard('5', 'hearts'), createCard('6', 'diamonds'), createCard('7', 'clubs')],
         deckCount: 28,
         activePlayerId: 'player-1',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
@@ -510,7 +510,7 @@ describe('GameContext', () => {
           type: 'play_cards',
           playerId: 'player-3',
           playerName: 'Charlie',
-          cards: [{ rank: '7', suit: 'clubs' }],
+          cards: [createCard('7', 'clubs')],
           timestamp: new Date().toISOString(),
         },
       }
@@ -558,7 +558,7 @@ describe('GameContext', () => {
           type: 'blow_up',
           playerId: 'player-2',
           playerName: 'Bob',
-          cards: [{ rank: '10', suit: 'spades' }],
+          cards: [createCard('10', 'spades')],
           blowUpReason: 'ten',
           timestamp: new Date().toISOString(),
         },
@@ -664,7 +664,7 @@ describe('GameContext', () => {
         myFaceDownCount: 0,
         myFaceDownPlayed: [],
         otherPlayers: {},
-        pile: [{ rank: '5', suit: 'hearts' }],
+        pile: [createCard('5', 'hearts')],
         deckCount: 30,
         activePlayerId: 'player-2',
         playerNames: { 'player-1': 'Alice', 'player-2': 'Bob', 'player-3': 'Charlie' },
@@ -674,7 +674,7 @@ describe('GameContext', () => {
           type: 'play_cards',
           playerId: 'player-1',
           playerName: 'Alice',
-          cards: [{ rank: '5', suit: 'hearts' }],
+          cards: [createCard('5', 'hearts')],
           timestamp: new Date().toISOString(),
         },
       }
@@ -690,14 +690,14 @@ describe('GameContext', () => {
       // Turn 2: Bob plays
       const turn2View: PlayerView = {
         ...turn1View,
-        pile: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }],
+        pile: [createCard('5', 'hearts'), createCard('6', 'diamonds')],
         activePlayerId: 'player-3',
         stateVersion: 2,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-2',
           playerName: 'Bob',
-          cards: [{ rank: '6', suit: 'diamonds' }],
+          cards: [createCard('6', 'diamonds')],
           timestamp: new Date().toISOString(),
         },
       }
@@ -713,14 +713,14 @@ describe('GameContext', () => {
       // Turn 3: Charlie plays
       const turn3View: PlayerView = {
         ...turn2View,
-        pile: [{ rank: '5', suit: 'hearts' }, { rank: '6', suit: 'diamonds' }, { rank: '7', suit: 'clubs' }],
+        pile: [createCard('5', 'hearts'), createCard('6', 'diamonds'), createCard('7', 'clubs')],
         activePlayerId: 'player-1',
         stateVersion: 3,
         lastAction: {
           type: 'play_cards',
           playerId: 'player-3',
           playerName: 'Charlie',
-          cards: [{ rank: '7', suit: 'clubs' }],
+          cards: [createCard('7', 'clubs')],
           timestamp: new Date().toISOString(),
         },
       }
@@ -780,7 +780,7 @@ describe('GameContext', () => {
           type: 'play_cards',
           playerId: 'player-1',
           playerName: 'Alice',
-          cards: [{ rank: '5', suit: 'hearts' }],
+          cards: [createCard('5', 'hearts')],
           timestamp: new Date().toISOString(),
         },
       }
@@ -831,7 +831,7 @@ describe('GameContext', () => {
           type: 'blow_up',
           playerId: 'player-1',
           playerName: 'Alice',
-          cards: [{ rank: '10', suit: 'spades' }],
+          cards: [createCard('10', 'spades')],
           blowUpReason: 'ten',
           timestamp: new Date().toISOString(),
         },

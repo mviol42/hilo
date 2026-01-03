@@ -3,6 +3,13 @@ import {
   getPlayerId,
   savePlayerName,
   getPlayerName,
+  getLobbyId,
+  saveLobbyId,
+  clearLobbyId,
+  getGameId,
+  saveGameId,
+  clearGameId,
+  clearPlayerData,
 } from './player'
 
 describe('player utilities', () => {
@@ -58,6 +65,54 @@ describe('player utilities', () => {
     it('persists to localStorage', () => {
       savePlayerName('Charlie')
       expect(localStorage.getItem('hilo:playerName')).toBe('Charlie')
+    })
+  })
+
+  describe('lobby ID for session recovery', () => {
+    it('returns null when no lobby ID is saved', () => {
+      expect(getLobbyId()).toBe(null)
+    })
+
+    it('saves and retrieves lobby ID', () => {
+      saveLobbyId('lobby-123')
+      expect(getLobbyId()).toBe('lobby-123')
+    })
+
+    it('clears lobby ID', () => {
+      saveLobbyId('lobby-123')
+      clearLobbyId()
+      expect(getLobbyId()).toBe(null)
+    })
+  })
+
+  describe('game ID for session recovery', () => {
+    it('returns null when no game ID is saved', () => {
+      expect(getGameId()).toBe(null)
+    })
+
+    it('saves and retrieves game ID', () => {
+      saveGameId('game-456')
+      expect(getGameId()).toBe('game-456')
+    })
+
+    it('clears game ID', () => {
+      saveGameId('game-456')
+      clearGameId()
+      expect(getGameId()).toBe(null)
+    })
+  })
+
+  describe('clearPlayerData', () => {
+    it('clears all player data including lobby and game IDs', () => {
+      savePlayerName('Alice')
+      saveLobbyId('lobby-123')
+      saveGameId('game-456')
+
+      clearPlayerData()
+
+      expect(getPlayerName()).toBe(null)
+      expect(getLobbyId()).toBe(null)
+      expect(getGameId()).toBe(null)
     })
   })
 })

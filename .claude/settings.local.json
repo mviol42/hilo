@@ -38,7 +38,8 @@
       "WebSearch",
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
-      "Skill(backend)"
+      "Skill(backend)",
+      "Bash(timeout 5 npm start)"
     ]
   }
 }

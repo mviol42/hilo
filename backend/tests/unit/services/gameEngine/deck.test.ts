@@ -95,26 +95,26 @@ describe('Deck Management', () => {
       const deck3 = createDeck(3, 'mega-explosion');
       const deck4 = createDeck(4, 'mega-explosion');
 
-      // Standard 52 + 4 extra 10s = 56
-      expect(deck2).toHaveLength(56);
-      expect(deck3).toHaveLength(56);
-      expect(deck4).toHaveLength(56);
+      // Standard 52 + 8 extra 10s = 60
+      expect(deck2).toHaveLength(60);
+      expect(deck3).toHaveLength(60);
+      expect(deck4).toHaveLength(60);
     });
 
     it('should create standard decks plus extra 10s for 5-8 players', () => {
       const deck5 = createDeck(5, 'mega-explosion');
       const deck8 = createDeck(8, 'mega-explosion');
 
-      // 2 standard decks (104) + 8 extra 10s = 112
-      expect(deck5).toHaveLength(112);
-      expect(deck8).toHaveLength(112);
+      // 2 standard decks (104) + 16 extra 10s = 120
+      expect(deck5).toHaveLength(120);
+      expect(deck8).toHaveLength(120);
     });
 
-    it('should have 8 tens in single deck (4 standard + 4 extra)', () => {
+    it('should have 12 tens in single deck (4 standard + 8 extra)', () => {
       const deck = createDeck(2, 'mega-explosion');
       const tensCount = deck.filter(c => c.rank === '10').length;
 
-      expect(tensCount).toBe(8);
+      expect(tensCount).toBe(12);
     });
 
     it('should have 4 cards of each non-10 rank in single deck', () => {
@@ -127,7 +127,7 @@ describe('Deck Management', () => {
 
       for (const [rank, count] of rankCounts.entries()) {
         if (rank === '10') {
-          expect(count).toBe(8); // 4 standard + 4 extra
+          expect(count).toBe(12); // 4 standard + 8 extra
         } else {
           expect(count).toBe(4);
         }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import type { Card as CardType } from '@hilo/shared'
+import { type Card as CardType, cardsEqual } from '@hilo/shared'
 import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
 import { usePlayer, useGame, useUI } from '@/context'
@@ -66,20 +66,16 @@ export function GamePage() {
     // Fetch initial game state if not already loaded
     // This handles the case where the user navigates directly to the game page
     // or refreshes during a game
-    if (!gameState) {
-      const fetchGameState = async () => {
-        try {
-          // The game state will be received via WebSocket events
-          // For now, we'll wait for the WebSocket to provide it
-          // Alternatively, we could add a GET endpoint to fetch current game state
-        } catch (error) {
-          console.error('Failed to load game state:', error)
-          showToast('Failed to load game', 'error')
-        }
+    if (!gameState && playerId) {
+      // Listeners are guaranteed to be registered before socket connects
+      // so we can request state immediately if connected
+      if (socketManager.isConnected()) {
+        console.log('[GamePage] Requesting game state for refresh recovery')
+        socketManager.requestGameState(gameId, playerId)
       }
-      fetchGameState()
+      // If not connected yet, the socket's connect handler will auto-request state
     }
-  }, [gameId, navigate, gameState, showToast])
+  }, [gameId, navigate, gameState, playerId])
 
   // Handle game events - clear events after processing
   useEffect(() => {
@@ -98,11 +94,11 @@ export function GamePage() {
 
   // SETUP PHASE: Select face-up cards
   const handleSetupCardClick = (card: CardType) => {
-    const isSelected = setupSelectedCards.some(c => c.rank === card.rank && c.suit === card.suit)
+    const isSelected = setupSelectedCards.some(c => cardsEqual(c, card))
 
     if (isSelected) {
       // Deselect card
-      setSetupSelectedCards(prev => prev.filter(c => !(c.rank === card.rank && c.suit === card.suit)))
+      setSetupSelectedCards(prev => prev.filter(c => !cardsEqual(c, card)))
     } else if (setupSelectedCards.length < 3) {
       // Select card
       setSetupSelectedCards(prev => [...prev, card])
@@ -291,8 +287,11 @@ export function GamePage() {
     try {
       setIsLoading(true)
       const response = await apiClient.playAgain({ gameId })
+      // Clear the old game ID before navigating to new lobby
+      socketManager.clearCurrentGameId()
+
       gameDispatch({ type: 'CLEAR_GAME_STATE' })
-      
+
       // Navigate to join page with the new lobby ID
       navigate(`/join?id=${response.lobbyId}`)
     } catch (error: any) {
@@ -334,6 +333,7 @@ export function GamePage() {
             </Button>
             <Button onClick={() => {
               gameDispatch({ type: 'CLEAR_GAME_STATE' })
+              socketManager.clearCurrentGameId()
               navigate('/')
             }} variant="primary" size="large">
               Back to Menu

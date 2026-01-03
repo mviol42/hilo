@@ -9,8 +9,30 @@ export type Rank =
   | 'J' | 'Q' | 'K' | 'A';
 
 export interface Card {
+  id: string;
   rank: Rank;
   suit: Suit;
+}
+
+/**
+ * Check if two cards are the same card (by unique ID)
+ */
+export function cardsEqual(a: Card, b: Card): boolean {
+  return a.id === b.id;
+}
+
+let cardIdCounter = 0;
+
+/**
+ * Create a card with an auto-generated unique ID.
+ * Useful for tests and creating placeholder cards.
+ */
+export function createCard(rank: Rank, suit: Suit): Card {
+  return {
+    id: `${++cardIdCounter}`,
+    rank,
+    suit,
+  };
 }
 
 /**

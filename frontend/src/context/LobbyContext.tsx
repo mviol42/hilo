@@ -61,9 +61,11 @@ export function LobbyProvider({ children }: { children: ReactNode }) {
     connectedToLobby: false,
   })
 
-  // Set up WebSocket listeners
+  // Register WebSocket listeners
+  // Note: Socket connection is coordinated by AppProviders to ensure
+  // all contexts (Lobby, Game, etc.) register listeners before connecting
   useEffect(() => {
-    socketManager.connect()
+    console.log('[LobbyContext] Registering lobby event listeners')
     const cleanupFns: Array<() => void> = []
 
     cleanupFns.push(
