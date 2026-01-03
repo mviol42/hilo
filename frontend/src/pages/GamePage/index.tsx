@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import type { Card as CardType } from '@hilo/shared'
+import { type Card as CardType, cardsEqual } from '@hilo/shared'
 import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
 import { usePlayer, useGame, useUI } from '@/context'
@@ -94,11 +94,11 @@ export function GamePage() {
 
   // SETUP PHASE: Select face-up cards
   const handleSetupCardClick = (card: CardType) => {
-    const isSelected = setupSelectedCards.some(c => c.rank === card.rank && c.suit === card.suit)
+    const isSelected = setupSelectedCards.some(c => cardsEqual(c, card))
 
     if (isSelected) {
       // Deselect card
-      setSetupSelectedCards(prev => prev.filter(c => !(c.rank === card.rank && c.suit === card.suit)))
+      setSetupSelectedCards(prev => prev.filter(c => !cardsEqual(c, card)))
     } else if (setupSelectedCards.length < 3) {
       // Select card
       setSetupSelectedCards(prev => [...prev, card])
@@ -287,9 +287,10 @@ export function GamePage() {
     try {
       setIsLoading(true)
       const response = await apiClient.playAgain({ gameId })
-      gameDispatch({ type: 'CLEAR_GAME_STATE' })
       // Clear the old game ID before navigating to new lobby
       socketManager.clearCurrentGameId()
+
+      gameDispatch({ type: 'CLEAR_GAME_STATE' })
 
       // Navigate to join page with the new lobby ID
       navigate(`/join?id=${response.lobbyId}`)

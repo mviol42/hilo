@@ -297,4 +297,111 @@ describe('Game Won Screen', () => {
       expect(screen.getByText(/Play Again/i)).toBeInTheDocument()
     })
   })
+
+  it('clears game ID when play again button is clicked', async () => {
+    const { apiClient } = await import('@/services/api')
+
+    // Mock the playAgain API call
+    vi.mocked(apiClient.playAgain).mockResolvedValue({
+      lobbyId: 'new-lobby-123',
+    })
+
+    const endedState: PlayerView = {
+      id: 'game-123',
+      phase: 'ended',
+      myHand: [],
+      myFaceUp: [],
+      myFaceDownCount: 0,
+      myFaceDownPlayed: [true, true, true],
+      otherPlayers: {},
+      pile: [],
+      deckCount: 0,
+      activePlayerId: 'player-1',
+      winner: 'player-1',
+      winnerName: 'Player 1',
+      playerNames: { 'player-1': 'Player 1' },
+      turnOrder: ['player-1'],
+      stateVersion: 10,
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/game?id=game-123']}>
+        <AppProviders>
+          <Routes>
+            <Route path="/game" element={<GamePage />} />
+            <Route path="/join" element={<div>Join Page</div>} />
+          </Routes>
+        </AppProviders>
+      </MemoryRouter>
+    )
+
+    if (gameStateUpdateCallback) {
+      gameStateUpdateCallback({ gameState: endedState })
+    }
+
+    // Wait for and click the Play Again button
+    const playAgainButton = await screen.findByText(/Play Again/i)
+    expect(playAgainButton).toBeInTheDocument()
+
+    playAgainButton.click()
+
+    // Verify clearCurrentGameId was called
+    await waitFor(() => {
+      expect(socketManager.clearCurrentGameId).toHaveBeenCalled()
+    })
+
+    // Verify API was called with correct game ID
+    expect(apiClient.playAgain).toHaveBeenCalledWith({ gameId: 'game-123' })
+  })
+
+  it('clears game ID when back to menu button is clicked', async () => {
+    const endedState: PlayerView = {
+      id: 'game-123',
+      phase: 'ended',
+      myHand: [],
+      myFaceUp: [],
+      myFaceDownCount: 0,
+      myFaceDownPlayed: [true, true, true],
+      otherPlayers: {},
+      pile: [],
+      deckCount: 0,
+      activePlayerId: 'player-1',
+      winner: 'player-1',
+      winnerName: 'Player 1',
+      playerNames: { 'player-1': 'Player 1' },
+      turnOrder: ['player-1'],
+      stateVersion: 10,
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/game?id=game-123']}>
+        <AppProviders>
+          <Routes>
+            <Route path="/game" element={<GamePage />} />
+            <Route path="/" element={<div>Home Page</div>} />
+          </Routes>
+        </AppProviders>
+      </MemoryRouter>
+    )
+
+    if (gameStateUpdateCallback) {
+      gameStateUpdateCallback({ gameState: endedState })
+    }
+
+    // Wait for and click the Back to Menu button
+    const backToMenuButton = await screen.findByText(/Back to Menu/i)
+    expect(backToMenuButton).toBeInTheDocument()
+
+    backToMenuButton.click()
+
+    // Verify clearCurrentGameId was called
+    await waitFor(() => {
+      expect(socketManager.clearCurrentGameId).toHaveBeenCalled()
+    })
+
+    // Verify navigation to home page
+    await waitFor(() => {
+      expect(screen.getByText('Home Page')).toBeInTheDocument()
+    })
+  })
 })

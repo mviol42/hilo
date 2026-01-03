@@ -166,6 +166,43 @@ describe('Game Initialization', () => {
 
       expect(() => selectFaceUpCards(game, 'p1', [0, 1, 2])).toThrow('Player must have 6 cards in hand');
     });
+
+    it('should correctly select cards by index when hand contains duplicate rank+suit cards (mega-explosion mode)', () => {
+      // Initialize with mega-explosion strategy to get duplicate 10s
+      const game = initializeGame(['p1', 'p2'], 'mega-explosion');
+      const dealtGame = dealCards(game);
+
+      // Get p1's hand before selection - make a copy to preserve original state
+      const p1HandBefore = [...dealtGame.players.get('p1')!.hand];
+
+      // Select indices 0, 1, 2
+      const selected = selectFaceUpCards(dealtGame, 'p1', [0, 1, 2]);
+      const p1State = selected.players.get('p1')!;
+
+      // Verify exactly 3 cards moved to face-up
+      expect(p1State.faceUp).toHaveLength(3);
+      expect(p1State.hand).toHaveLength(3);
+
+      // Verify all cards are distinct by ID (no card appears in both hand and faceUp)
+      const allCardIds = [
+        ...p1State.hand.map(c => c.id),
+        ...p1State.faceUp.map(c => c.id)
+      ];
+      const uniqueCardIds = new Set(allCardIds);
+      expect(uniqueCardIds.size).toBe(6); // All cards should be distinct
+
+      // Verify selected cards came from the original hand
+      const originalHandIds = new Set(p1HandBefore.map(c => c.id));
+      for (const card of p1State.faceUp) {
+        expect(originalHandIds.has(card.id)).toBe(true);
+      }
+      for (const card of p1State.hand) {
+        expect(originalHandIds.has(card.id)).toBe(true);
+      }
+
+      // Verify cards are selected by index, not by rank+suit
+      // This is implicitly tested by ensuring all 6 cards remain distinct by ID
+    });
   });
 
   describe('getLowestNonSpecialRank', () => {

@@ -216,15 +216,32 @@ gameRouter.post('/select-faceup', async (req: Request, res: Response) => {
 
     // Find indices of the selected cards
     const cardIndices: number[] = [];
+    const usedIndices = new Set<number>();
+
     for (const selectedCard of cards) {
+      console.log(`[GameRoutes] Looking for card: rank=${selectedCard.rank}, suit=${selectedCard.suit}, id=${selectedCard.id}`);
+      console.log(`[GameRoutes] Hand contains: ${playerState.hand.map(c => `${c.rank}${c.suit}(id:${c.id})`).join(', ')}`);
+
       const index = playerState.hand.findIndex(c => cardsEqual(c, selectedCard));
       if (index === -1) {
+        console.log(`[GameRoutes] Card not found in hand: rank=${selectedCard.rank}, suit=${selectedCard.suit}, id=${selectedCard.id}`);
         return res.status(400).json({
           error: 'Bad request',
-          message: 'Card not in hand',
+          message: `Card not in hand: ${selectedCard.rank} of ${selectedCard.suit} (id: ${selectedCard.id})`,
         });
       }
+
+      if (usedIndices.has(index)) {
+        console.log(`[GameRoutes] Duplicate index ${index} found - this shouldn't happen!`);
+        return res.status(400).json({
+          error: 'Bad request',
+          message: 'Duplicate card selection detected',
+        });
+      }
+
+      console.log(`[GameRoutes] Found card at index ${index}`);
       cardIndices.push(index);
+      usedIndices.add(index);
     }
 
     // Get player name from lobby
