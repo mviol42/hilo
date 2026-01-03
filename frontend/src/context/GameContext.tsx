@@ -202,14 +202,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     lastStateVersion: -1, // Start at -1 to accept any initial state (version 0+)
   })
 
-  // Set up WebSocket listeners BEFORE connecting
-  // This ensures listeners are ready when socket connects and events are fired
+  // Register WebSocket listeners
+  // Note: Socket connection is coordinated by AppProviders to ensure
+  // all contexts (Lobby, Game, etc.) register listeners before connecting
   useEffect(() => {
+    console.log('[GameContext] Registering game event listeners')
     const cleanupFns: Array<() => void> = []
 
-    console.log('[GameContext] Setting up game event listeners')
-
-    // Register all listeners first - these will be queued until socket connects
     cleanupFns.push(
       socketManager.onGameStateUpdate((data) => {
         console.log('[GameContext] Received game state update:', data.gameState.phase)
@@ -232,9 +231,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'PLAYER_WON', payload: data })
       })
     )
-
-    // Listeners are now registered and will be attached before socket connects
-    // No need to wait for connection - the socket manager handles this
 
     return () => {
       console.log('[GameContext] Cleaning up game event listeners')
