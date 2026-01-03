@@ -29,54 +29,68 @@ export function LobbyPage() {
   const [isCheckingLobby, setIsCheckingLobby] = useState(true)
   const [lobbyError, setLobbyError] = useState<string | null>(null)
 
-  // Check if user is in the lobby, redirect if not
-  const checkLobbyAccess = useCallback(async () => {
+  // Track if player is verified to be in lobby (prevents re-checking on state updates)
+  const [isVerified, setIsVerified] = useState(false)
+
+  // Check lobby access - verify player is in lobby
+  useEffect(() => {
+    // Already verified - don't re-check
+    if (isVerified) {
+      return
+    }
+
     if (!lobbyId) {
       navigate('/')
       return
     }
 
-    // If we already have lobby state for this lobby, we're good
+    // If we already have lobby state for this lobby, verify player is in it
     if (lobby && lobby.id === lobbyId) {
-      // Verify the current player is in the lobby
       const isInLobby = lobby.players.some(p => p.id === playerId)
       if (isInLobby) {
         setIsCheckingLobby(false)
+        setIsVerified(true)
         return
       }
-    }
-
-    // Check lobby status before trying to join
-    try {
-      const status = await apiClient.getLobbyStatus(lobbyId)
-
-      if (!status.exists) {
-        setLobbyError('This lobby no longer exists.')
-        setIsCheckingLobby(false)
-        setTimeout(() => navigate('/'), 2000)
-        return
-      }
-
-      if (status.gameStarted) {
-        setLobbyError('This game has already started.')
-        setIsCheckingLobby(false)
-        setTimeout(() => navigate('/'), 2000)
-        return
-      }
-
-      // Lobby exists and game hasn't started - redirect to join page
+      // Have lobby state but player not in it - redirect to join
       navigate(`/join?id=${lobbyId}`)
-    } catch (error) {
-      console.error('Failed to check lobby status:', error)
-      setLobbyError('Failed to connect. Please try again.')
-      setIsCheckingLobby(false)
+      return
     }
-  }, [lobbyId, lobby, playerId, navigate])
 
-  // Check lobby access on mount
-  useEffect(() => {
-    checkLobbyAccess()
-  }, [checkLobbyAccess])
+    // No lobby state yet - check with server after a short delay
+    // This delay allows for lobby state to be set from context (e.g., after navigation from JoinPage)
+    const timeoutId = setTimeout(async () => {
+      // Re-check if lobby state arrived during the delay
+      // Note: We can't access the latest `lobby` here due to closure,
+      // so we check isVerified which would be set by a re-run of this effect
+      try {
+        const status = await apiClient.getLobbyStatus(lobbyId)
+
+        if (!status.exists) {
+          setLobbyError('This lobby no longer exists.')
+          setIsCheckingLobby(false)
+          setTimeout(() => navigate('/'), 2000)
+          return
+        }
+
+        if (status.gameStarted) {
+          setLobbyError('This game has already started.')
+          setIsCheckingLobby(false)
+          setTimeout(() => navigate('/'), 2000)
+          return
+        }
+
+        // Lobby exists and game hasn't started - redirect to join page
+        navigate(`/join?id=${lobbyId}`)
+      } catch (error) {
+        console.error('Failed to check lobby status:', error)
+        setLobbyError('Failed to connect. Please try again.')
+        setIsCheckingLobby(false)
+      }
+    }, 100) // Small delay to allow state to settle
+
+    return () => clearTimeout(timeoutId)
+  }, [lobbyId, playerId, lobby, navigate, isVerified])
 
   // Set up WebSocket listener for game starting
   useEffect(() => {

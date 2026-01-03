@@ -120,14 +120,8 @@ class SocketManager {
           playerId: this.currentPlayerId,
         })
 
-        // Request game state if we were in a game (for immediate recovery)
-        if (this.currentGameId) {
-          console.log('[Socket] Requesting game state:', this.currentGameId)
-          this.socket?.emit('game:requestState', {
-            gameId: this.currentGameId,
-            playerId: this.currentPlayerId,
-          })
-        }
+        // Note: Game state request is NOT done here because listeners may not be set up yet.
+        // Instead, GameContext will request game state after its listeners are ready.
       }
     })
 

@@ -66,20 +66,19 @@ export function GamePage() {
     // Fetch initial game state if not already loaded
     // This handles the case where the user navigates directly to the game page
     // or refreshes during a game
-    if (!gameState) {
-      const fetchGameState = async () => {
-        try {
-          // The game state will be received via WebSocket events
-          // For now, we'll wait for the WebSocket to provide it
-          // Alternatively, we could add a GET endpoint to fetch current game state
-        } catch (error) {
-          console.error('Failed to load game state:', error)
-          showToast('Failed to load game', 'error')
+    if (!gameState && playerId) {
+      // Small delay to ensure GameContext listeners are set up first
+      // This is needed because on page refresh, the socket connect handler
+      // and GameContext listener setup race with each other
+      const timeout = setTimeout(() => {
+        if (socketManager.isConnected()) {
+          console.log('[GamePage] Requesting game state for refresh recovery')
+          socketManager.requestGameState(gameId, playerId)
         }
-      }
-      fetchGameState()
+      }, 150)
+      return () => clearTimeout(timeout)
     }
-  }, [gameId, navigate, gameState, showToast])
+  }, [gameId, navigate, gameState, playerId, showToast])
 
   // Handle game events - clear events after processing
   useEffect(() => {
