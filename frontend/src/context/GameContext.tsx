@@ -208,53 +208,37 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // Set up WebSocket listeners
   useEffect(() => {
-    // Wait for socket to be connected before setting up listeners
-    const setupListeners = () => {
-      if (!socketManager.isConnected()) {
-        console.log('[GameContext] Socket not connected, waiting...')
-        // Retry after a short delay
-        const timeout = setTimeout(setupListeners, 100)
-        return () => clearTimeout(timeout)
-      }
+    const cleanupFns: Array<() => void> = []
 
-      const cleanupFns: Array<() => void> = []
+    console.log('[GameContext] Setting up game event listeners')
 
-      try {
-        console.log('[GameContext] Setting up game event listeners')
+    cleanupFns.push(
+      socketManager.onGameStateUpdate((data) => {
+        console.log('[GameContext] Received game state update:', data.gameState.phase)
+        dispatch({ type: 'SET_GAME_STATE', payload: data.gameState })
+      })
+    )
 
-        cleanupFns.push(
-          socketManager.onGameStateUpdate((data) => {
-            console.log('[GameContext] Received game state update:', data.gameState.phase)
-            dispatch({ type: 'SET_GAME_STATE', payload: data.gameState })
-          })
-        )
+    cleanupFns.push(
+      socketManager.onGameTurnChange((data) => {
+        console.log('[GameContext] Turn changed to:', data.activePlayerId)
+        dispatch({ type: 'TURN_CHANGED', payload: data })
+      })
+    )
 
-        cleanupFns.push(
-          socketManager.onGameTurnChange((data) => {
-            console.log('[GameContext] Turn changed to:', data.activePlayerId)
-            dispatch({ type: 'TURN_CHANGED', payload: data })
-          })
-        )
+    // Note: pileBlown info is now read from lastAction in game:stateUpdate
 
-        // Note: pileBlown info is now read from lastAction in game:stateUpdate
+    cleanupFns.push(
+      socketManager.onGamePlayerWon((data) => {
+        console.log('[GameContext] Player won:', data.winnerId)
+        dispatch({ type: 'PLAYER_WON', payload: data })
+      })
+    )
 
-        cleanupFns.push(
-          socketManager.onGamePlayerWon((data) => {
-            console.log('[GameContext] Player won:', data.winnerId)
-            dispatch({ type: 'PLAYER_WON', payload: data })
-          })
-        )
-      } catch (error) {
-        console.error('Failed to set up game event listeners:', error)
-      }
-
-      return () => {
-        console.log('[GameContext] Cleaning up game event listeners')
-        cleanupFns.forEach((cleanup) => cleanup())
-      }
+    return () => {
+      console.log('[GameContext] Cleaning up game event listeners')
+      cleanupFns.forEach((cleanup) => cleanup())
     }
-
-    return setupListeners()
   }, [])
 
   return (
