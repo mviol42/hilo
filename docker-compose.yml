@@ -37,6 +37,12 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6380
       - REDIS_ENABLED=true
+      - LOG_LEVEL=error
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     dns:
       - 8.8.8.8
       - 8.8.4.4

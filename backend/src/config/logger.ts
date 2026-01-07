@@ -11,9 +11,16 @@ const consoleFormat = printf(({ level, message, timestamp }) => {
   return `${timestamp} [${level}]: ${message}`;
 });
 
+// Determine default log level based on environment
+const getDefaultLogLevel = () => {
+  if (process.env.LOG_LEVEL) return process.env.LOG_LEVEL;
+  if (process.env.NODE_ENV === 'production') return 'error';
+  return 'info';
+};
+
 // Create logger instance
 export const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
+  level: getDefaultLogLevel(),
   format: combine(
     timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     winston.format.json()
