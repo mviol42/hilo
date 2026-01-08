@@ -66,7 +66,7 @@ describe('Game Setup Flow Integration', () => {
       lobby: {
         id: 'lobby-123',
         leaderId: 'player-1',
-        players: [{ id: 'player-1', name: 'Player 1', isReady: true }],
+        players: [{ id: 'player-1', name: 'Player 1', isLeader: true, isReady: true }],
         status: 'in_game',
       },
       gameId: 'game-123',
@@ -141,8 +141,8 @@ describe('Game Setup Flow Integration', () => {
         id: 'lobby-123',
         leaderId: 'player-1',
         players: [
-          { id: 'player-1', name: 'Player 1', isReady: true },
-          { id: 'player-2', name: 'Player 2', isReady: true },
+          { id: 'player-1', name: 'Player 1', isLeader: true, isReady: true },
+          { id: 'player-2', name: 'Player 2', isLeader: false, isReady: true },
         ],
         status: 'in_game',
       },

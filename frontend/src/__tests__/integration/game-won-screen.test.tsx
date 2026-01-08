@@ -48,7 +48,7 @@ describe('Game Won Screen', () => {
       lobby: {
         id: 'lobby-123',
         leaderId: 'player-1',
-        players: [{ id: 'player-1', name: 'Player 1', isReady: true }],
+        players: [{ id: 'player-1', name: 'Player 1', isLeader: true, isReady: true }],
         status: 'in_game',
       },
       gameId: 'game-123',
@@ -208,7 +208,7 @@ describe('Game Won Screen', () => {
       lobby: {
         id: 'lobby-123',
         leaderId: 'player-1',
-        players: [{ id: 'player-1', name: 'Player 1', isReady: true }],
+        players: [{ id: 'player-1', name: 'Player 1', isLeader: true, isReady: true }],
         status: 'in_game',
       },
       gameId: 'game-123',

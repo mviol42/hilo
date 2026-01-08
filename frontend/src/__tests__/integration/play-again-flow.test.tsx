@@ -8,7 +8,7 @@ import { JoinPage } from '@/pages/JoinPage'
 import { AppProviders } from '@/context'
 import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
-import type { PlayerView, Lobby, LobbyPlayer } from '@hilo/shared'
+import type { PlayerView, LobbyState, Player, LobbyPlayerJoinedEvent } from '@hilo/shared'
 
 // Mock API and Socket
 vi.mock('@/services/api')
@@ -16,7 +16,7 @@ vi.mock('@/services/socket')
 
 describe('Play Again Flow', () => {
   let gameStateUpdateCallback: ((data: { gameState: PlayerView }) => void) | null = null
-  let lobbyPlayerJoinedCallback: ((data: { player: LobbyPlayer; lobby: Lobby }) => void) | null = null
+  let lobbyPlayerJoinedCallback: ((data: LobbyPlayerJoinedEvent) => void) | null = null
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -93,13 +93,13 @@ describe('Play Again Flow', () => {
 
       // Mock playAgain to return a new lobby
       vi.mocked(apiClient.playAgain).mockResolvedValue({
-        success: true,
         lobbyId: 'new-lobby-456',
       })
 
       // Mock joinLobby for the new lobby
       vi.mocked(apiClient.joinLobby).mockResolvedValue({
-        success: true,
+        playerId: 'player-1',
+        isLeader: true,
         lobby: {
           id: 'new-lobby-456',
           leaderId: 'player-1',
@@ -178,12 +178,12 @@ describe('Play Again Flow', () => {
       })
 
       vi.mocked(apiClient.playAgain).mockResolvedValue({
-        success: true,
         lobbyId: 'new-lobby-456',
       })
 
       vi.mocked(apiClient.joinLobby).mockResolvedValue({
-        success: true,
+        playerId: 'player-1',
+        isLeader: true,
         lobby: {
           id: 'new-lobby-456',
           leaderId: 'player-1',
@@ -309,7 +309,7 @@ describe('Play Again Flow', () => {
       localStorage.setItem('hilo:playerName', 'Leader')
 
       // Initial lobby state - just the leader
-      const initialLobby: Lobby = {
+      const initialLobby: LobbyState = {
         id: 'new-lobby-789',
         leaderId: 'leader-1',
         players: [{ id: 'leader-1', name: 'Leader', isLeader: true, isReady: true }],
@@ -341,14 +341,14 @@ describe('Play Again Flow', () => {
       expect(screen.getByText(/Players \(1\)/i)).toBeInTheDocument()
 
       // Simulate another player joining via WebSocket
-      const newPlayer: LobbyPlayer = {
+      const newPlayer: Player = {
         id: 'player-2',
         name: 'NewPlayer',
         isLeader: false,
         isReady: false,
       }
 
-      const updatedLobby: Lobby = {
+      const updatedLobby: LobbyState = {
         id: 'new-lobby-789',
         leaderId: 'leader-1',
         players: [
@@ -416,12 +416,12 @@ describe('Play Again Flow', () => {
         })
 
       vi.mocked(apiClient.playAgain).mockResolvedValue({
-        success: true,
         lobbyId: 'new-lobby-456',
       })
 
       vi.mocked(apiClient.joinLobby).mockResolvedValue({
-        success: true,
+        playerId: 'leader-1',
+        isLeader: true,
         lobby: {
           id: 'new-lobby-456',
           leaderId: 'leader-1',

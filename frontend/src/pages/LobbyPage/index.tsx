@@ -95,7 +95,9 @@ export function LobbyPage() {
         playerId,
       })
       // Update lobby context with response (isReady is derived from lobby state)
-      lobbyDispatch({ type: 'SET_LOBBY', payload: response.lobby })
+      if (response.lobby) {
+        lobbyDispatch({ type: 'SET_LOBBY', payload: response.lobby })
+      }
       showToast('You are ready!', 'success')
     } catch (error: any) {
       console.error('Failed to mark ready:', error)
