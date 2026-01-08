@@ -48,9 +48,21 @@ function gameReducer(state: GameContextState, action: GameAction): GameContextSt
     case 'SET_GAME_STATE': {
       const newState = action.payload
 
+      // If this is a different game, reset version tracking and accept the new state
+      // This handles the play-again flow where new game has version 1 but old game had version 53
+      const isDifferentGame = state.gameState && state.gameState.id !== newState.id
+      if (isDifferentGame) {
+        console.log('[GameContext] Different game detected, resetting state:', {
+          oldGameId: state.gameState?.id?.substring(0, 8),
+          newGameId: newState.id?.substring(0, 8),
+          newVersion: newState.stateVersion,
+        })
+      }
+
       // Idempotent state update: skip if we've already processed this or a newer version
       // This prevents duplicate processing from heartbeats or retried updates
-      if (newState.stateVersion <= state.lastStateVersion) {
+      // But allow if it's a different game (different ID means new game, reset tracking)
+      if (!isDifferentGame && newState.stateVersion <= state.lastStateVersion) {
         console.log('[GameContext] Skipping stale state update:', {
           received: newState.stateVersion,
           current: state.lastStateVersion,

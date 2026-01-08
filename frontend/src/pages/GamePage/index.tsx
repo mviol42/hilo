@@ -277,9 +277,11 @@ export function GamePage() {
     try {
       setIsLoading(true)
       const response = await apiClient.playAgain({ gameId })
-      gameDispatch({ type: 'CLEAR_GAME_STATE' })
 
       // Navigate to join page with the new lobby ID
+      // Note: Don't clear game state here - it triggers useSessionRejoin to re-run
+      // with the old game ID from the URL, causing stale state to be fetched.
+      // GameContext handles different game IDs by resetting version tracking.
       navigate(`/join?id=${response.lobbyId}`)
     } catch (error: any) {
       console.error('Failed to create play again lobby:', error)

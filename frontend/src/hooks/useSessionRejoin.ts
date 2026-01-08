@@ -40,6 +40,10 @@ export function useSessionRejoin({ type }: UseSessionRejoinOptions): UseSessionR
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const hasRejoined = useRef(false)
 
+  // Track the ID we've rejoined for to prevent duplicate rejoins for the same ID
+  // This prevents the race condition when state is cleared during play-again
+  const lastRejoinedId = useRef<string | null>(null)
+
   // Store resolved IDs for reconnection
   const resolvedLobbyId = useRef<string | null>(null)
   const resolvedGameId = useRef<string | null>(null)
@@ -64,7 +68,9 @@ export function useSessionRejoin({ type }: UseSessionRejoinOptions): UseSessionR
         ? { playerId, gameId: id }
         : { playerId, lobbyId: id }
 
+      console.log('[performRejoin] Requesting:', type, 'id:', id)
       const response = await apiClient.rejoinSession(request)
+      console.log('[performRejoin] Response gameState:', response.gameState?.id, 'phase:', response.gameState?.phase)
 
       // Store resolved IDs for reconnection
       resolvedLobbyId.current = response.lobbyId
@@ -116,20 +122,51 @@ export function useSessionRejoin({ type }: UseSessionRejoinOptions): UseSessionR
 
   // Initial rejoin on mount
   useEffect(() => {
+    console.log('[useSessionRejoin] Effect running:', { type, id, lobbyId: lobby?.id, gameStateId: gameState?.id, hasRejoined: hasRejoined.current })
+
     // Skip if already have the right state (prevents re-running on state updates)
+    // But still ensure socket is connected and we have resolved IDs for reconnection
     if (type === 'lobby' && lobby?.id === id) {
+      console.log('[useSessionRejoin] Skipping - lobby state already matches')
+      // Still store resolved IDs for reconnection handler
+      resolvedLobbyId.current = id
+      // Ensure socket is connected and joined to the room
+      if (playerId) {
+        socketManager.connect()
+        socketManager.joinSession(playerId, id)
+      }
       setIsRejoining(false)
       return
     }
     if (type === 'game' && gameState?.id === id) {
+      console.log('[useSessionRejoin] Skipping - game state already matches')
+      // Still store resolved IDs for reconnection handler
+      // For game, we need the lobby ID too - get it from lobby context if available
+      if (lobby?.id) {
+        resolvedLobbyId.current = lobby.id
+      }
+      resolvedGameId.current = id
+      // Ensure socket is connected and joined to the room
+      if (playerId && lobby?.id) {
+        socketManager.connect()
+        socketManager.joinSession(playerId, lobby.id, id)
+      }
       setIsRejoining(false)
       return
     }
 
-    // Prevent duplicate rejoin attempts
-    if (hasRejoined.current) return
+    // Prevent duplicate rejoin attempts for the same ID
+    // This handles both:
+    // 1. Normal duplicate prevention (hasRejoined)
+    // 2. Race condition when game state is cleared during play-again (lastRejoinedId)
+    if (hasRejoined.current && lastRejoinedId.current === id) {
+      console.log('[useSessionRejoin] Skipping - already rejoined for this ID:', id?.substring(0, 8))
+      return
+    }
     hasRejoined.current = true
+    lastRejoinedId.current = id
 
+    console.log('[useSessionRejoin] Calling performRejoin')
     performRejoin()
   }, [id, type, lobby?.id, gameState?.id, performRejoin])
 

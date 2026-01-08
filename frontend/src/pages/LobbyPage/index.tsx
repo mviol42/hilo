@@ -120,6 +120,7 @@ export function LobbyPage() {
       })
 
       console.log('[LobbyPage] Game started successfully, gameState.id:', response.gameState.id?.substring(0, 20), 'navigating to:', `/game?id=${response.gameState.id}`)
+      console.log('[handleStartGame] New game state:', response.gameState.id, 'phase:', response.gameState.phase)
 
       // Initialize game state from API response (for leader)
       gameDispatch({ type: 'SET_GAME_STATE', payload: response.gameState })
