@@ -42,7 +42,7 @@ export function LandingPage() {
 
       // Connect to WebSocket room
       socketManager.connect()
-      socketManager.joinLobby(lobbyId, playerId)
+      socketManager.joinSession(playerId, lobbyId)
 
       // Navigate to lobby page
       navigate(`/lobby?id=${lobbyId}`)
@@ -82,7 +82,7 @@ export function LandingPage() {
 
       // Connect to WebSocket room
       socketManager.connect()
-      socketManager.joinLobby(lobbyIdInput.trim(), playerId)
+      socketManager.joinSession(playerId, lobbyIdInput.trim())
 
       // Navigate to lobby page
       navigate(`/lobby?id=${lobbyIdInput.trim()}`)

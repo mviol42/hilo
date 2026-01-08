@@ -109,9 +109,26 @@ export interface PlayAgainResponse {
   lobbyId: LobbyId;
 }
 
+// Session rejoin endpoint
+
+export interface RejoinRequest {
+  playerId: PlayerId;
+  lobbyId?: LobbyId;
+  gameId?: string;
+}
+
+export interface RejoinResponse {
+  success: boolean;
+  lobbyId: LobbyId;
+  lobby: LobbyState;
+  gameId?: string;
+  gameState?: PlayerView;
+}
+
 // Error responses
 
 export interface ErrorResponse {
   error: string;
   message?: string;
+  code?: string;
 }

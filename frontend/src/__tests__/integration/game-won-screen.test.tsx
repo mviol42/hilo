@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import '@testing-library/jest-dom'
 import { GamePage } from '@/pages/GamePage'
 import { AppProviders } from '@/context'
+import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
 import type { PlayerView } from '@hilo/shared'
 
@@ -40,12 +41,41 @@ describe('Game Won Screen', () => {
     // Set player ID in localStorage to match test player
     localStorage.setItem('hilo:playerId', 'player-1')
 
+    // Mock apiClient.rejoinSession for useSessionRejoin hook
+    vi.mocked(apiClient.rejoinSession).mockResolvedValue({
+      success: true,
+      lobbyId: 'lobby-123',
+      lobby: {
+        id: 'lobby-123',
+        leaderId: 'player-1',
+        players: [{ id: 'player-1', name: 'Player 1', isReady: true }],
+        status: 'in_game',
+      },
+      gameId: 'game-123',
+      gameState: {
+        id: 'game-123',
+        phase: 'ended',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [true, true, true],
+        otherPlayers: {},
+        pile: [],
+        deckCount: 0,
+        activePlayerId: 'player-1',
+        winner: 'player-1',
+        winnerName: 'Player 1',
+        playerNames: { 'player-1': 'Player 1' },
+        turnOrder: ['player-1'],
+        stateVersion: 10,
+      },
+    })
+
     // Mock socketManager
     vi.mocked(socketManager.connect).mockReturnValue(undefined as any)
-    vi.mocked(socketManager.joinLobby).mockReturnValue(undefined)
+    vi.mocked(socketManager.joinSession).mockReturnValue(undefined)
     vi.mocked(socketManager.isConnected).mockReturnValue(true)
-    vi.mocked(socketManager.setCurrentGameId).mockReturnValue(undefined)
-    vi.mocked(socketManager.clearCurrentGameId).mockReturnValue(undefined)
+    vi.mocked(socketManager.onConnectionStateChange).mockReturnValue(() => {})
 
     // Capture WebSocket event callbacks
     vi.mocked(socketManager.onGameStateUpdate).mockImplementation((callback) => {
@@ -171,6 +201,20 @@ describe('Game Won Screen', () => {
     // This test verifies that hooks are called in consistent order
     // even when transitioning between different render states
 
+    // Override mock to NOT return gameState - so we see loading state first
+    vi.mocked(apiClient.rejoinSession).mockResolvedValue({
+      success: true,
+      lobbyId: 'lobby-123',
+      lobby: {
+        id: 'lobby-123',
+        leaderId: 'player-1',
+        players: [{ id: 'player-1', name: 'Player 1', isReady: true }],
+        status: 'in_game',
+      },
+      gameId: 'game-123',
+      // No gameState - will be provided via websocket
+    })
+
     render(
       <MemoryRouter initialEntries={['/game?id=game-123']}>
         <AppProviders>
@@ -181,8 +225,10 @@ describe('Game Won Screen', () => {
       </MemoryRouter>
     )
 
-    // Initially shows loading
-    expect(screen.getByText(/Loading game/i)).toBeInTheDocument()
+    // Initially shows loading (after rejoin completes but before websocket provides game state)
+    await waitFor(() => {
+      expect(screen.getByText(/Loading game/i)).toBeInTheDocument()
+    })
 
     // Transition directly to ended state
     const endedState: PlayerView = {

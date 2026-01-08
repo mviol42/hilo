@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import type { Card as CardType } from '@hilo/shared'
 import { apiClient } from '@/services/api'
-import { socketManager } from '@/services/socket'
 import { usePlayer, useGame, useUI } from '@/context'
-import { Card, Hand, StackedCards, PlayAnimation, Button, TurnIndicator } from '@/components'
+import { useSessionRejoin } from '@/hooks'
+import { Card, Hand, StackedCards, PlayAnimation, Button, TurnIndicator, LoadingSpinner } from '@/components'
 
 export function GamePage() {
   const navigate = useNavigate()
@@ -14,6 +14,9 @@ export function GamePage() {
   const { playerId } = usePlayer()
   const { gameState, selectedCards, showFaceUp, lastEvent, lastPlayedCards, pileBlownInfo, pilePickupInfo, dispatch: gameDispatch } = useGame()
   const { showToast, setIsLoading } = useUI()
+
+  // Use session rejoin hook to handle reconnection
+  const { isRejoining, rejoinError } = useSessionRejoin({ type: 'game' })
 
   const [setupSelectedCards, setSetupSelectedCards] = useState<CardType[]>([])
   const [slideAnimation, setSlideAnimation] = useState<'top' | 'bottom' | null>(null)
@@ -46,40 +49,6 @@ export function GamePage() {
     return phrases[Math.floor(Math.random() * phrases.length)]
   })
 
-  // Track game ID for reconnection recovery
-  useEffect(() => {
-    if (gameId) {
-      socketManager.setCurrentGameId(gameId)
-    }
-    return () => {
-      socketManager.clearCurrentGameId()
-    }
-  }, [gameId])
-
-  // Redirect if no game ID and fetch initial game state
-  useEffect(() => {
-    if (!gameId) {
-      navigate('/')
-      return
-    }
-
-    // Fetch initial game state if not already loaded
-    // This handles the case where the user navigates directly to the game page
-    // or refreshes during a game
-    if (!gameState) {
-      const fetchGameState = async () => {
-        try {
-          // The game state will be received via WebSocket events
-          // For now, we'll wait for the WebSocket to provide it
-          // Alternatively, we could add a GET endpoint to fetch current game state
-        } catch (error) {
-          console.error('Failed to load game state:', error)
-          showToast('Failed to load game', 'error')
-        }
-      }
-      fetchGameState()
-    }
-  }, [gameId, navigate, gameState, showToast])
 
   // Handle game events - clear events after processing
   useEffect(() => {
@@ -247,12 +216,29 @@ export function GamePage() {
   }
 
   if (!gameId) {
+    return null
+  }
+
+  // Show loading state while rejoining session
+  if (isRejoining) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold mb-4">No game ID</h1>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 p-4">
+        <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <LoadingSpinner />
+          <p className="mt-4 text-gray-300">Reconnecting to game...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (rejoinError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 p-4">
+        <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <p className="text-red-400 text-lg font-medium mb-4">{rejoinError}</p>
           <Button onClick={() => navigate('/')} variant="primary">
-            Return to Home
+            Return Home
           </Button>
         </div>
       </div>
@@ -264,8 +250,8 @@ export function GamePage() {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-3xl font-bold mb-4">Loading game...</h1>
-          <p className="text-gray-400 mb-4">Waiting for game state from server</p>
+          <LoadingSpinner />
+          <h1 className="text-3xl font-bold mt-4 mb-4">Loading game...</h1>
           <p className="text-sm text-gray-500">Game ID: {gameId.substring(0, 8)}...</p>
         </div>
       </div>
@@ -292,7 +278,7 @@ export function GamePage() {
       setIsLoading(true)
       const response = await apiClient.playAgain({ gameId })
       gameDispatch({ type: 'CLEAR_GAME_STATE' })
-      
+
       // Navigate to join page with the new lobby ID
       navigate(`/join?id=${response.lobbyId}`)
     } catch (error: any) {

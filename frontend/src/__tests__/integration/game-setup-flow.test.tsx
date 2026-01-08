@@ -59,12 +59,25 @@ describe('Game Setup Flow Integration', () => {
     vi.mocked(playerUtils.getPlayerId).mockReturnValue('player-1')
     vi.mocked(playerUtils.getPlayerName).mockReturnValue('Player 1')
 
+    // Mock apiClient.rejoinSession for useSessionRejoin hook
+    vi.mocked(apiClient.rejoinSession).mockResolvedValue({
+      success: true,
+      lobbyId: 'lobby-123',
+      lobby: {
+        id: 'lobby-123',
+        leaderId: 'player-1',
+        players: [{ id: 'player-1', name: 'Player 1', isReady: true }],
+        status: 'in_game',
+      },
+      gameId: 'game-123',
+      gameState: mockGameState,
+    })
+
     // Mock socketManager
     vi.mocked(socketManager.connect).mockReturnValue(undefined as any)
-    vi.mocked(socketManager.joinLobby).mockReturnValue(undefined)
+    vi.mocked(socketManager.joinSession).mockReturnValue(undefined)
     vi.mocked(socketManager.isConnected).mockReturnValue(true)
-    vi.mocked(socketManager.setCurrentGameId).mockReturnValue(undefined)
-    vi.mocked(socketManager.clearCurrentGameId).mockReturnValue(undefined)
+    vi.mocked(socketManager.onConnectionStateChange).mockReturnValue(() => {})
 
     // Capture WebSocket event callbacks
     vi.mocked(socketManager.onGameStateUpdate).mockImplementation((callback) => {
@@ -119,6 +132,24 @@ describe('Game Setup Flow Integration', () => {
     vi.mocked(playerUtils.getPlayerId).mockReturnValue('player-2')
     vi.mocked(playerUtils.getPlayerName).mockReturnValue('Player 2')
 
+    // Override rejoinSession to NOT return gameState - simulates the bug where
+    // player 2 navigates to game page before receiving game state via websocket
+    vi.mocked(apiClient.rejoinSession).mockResolvedValue({
+      success: true,
+      lobbyId: 'lobby-123',
+      lobby: {
+        id: 'lobby-123',
+        leaderId: 'player-1',
+        players: [
+          { id: 'player-1', name: 'Player 1', isReady: true },
+          { id: 'player-2', name: 'Player 2', isReady: true },
+        ],
+        status: 'in_game',
+      },
+      gameId: 'game-123',
+      // No gameState - will be provided via websocket
+    })
+
     // Mock game state for player 2's perspective
     const player2GameState: PlayerView = {
       ...mockGameState,
@@ -155,8 +186,10 @@ describe('Game Setup Flow Integration', () => {
     // BUG: Non-leader navigates to game page but doesn't receive game state
     // They should see "Loading game..." indefinitely
 
-    // Initially shows loading
-    expect(screen.getByText(/Loading game/i)).toBeInTheDocument()
+    // Initially shows loading (after rejoin completes but before websocket provides game state)
+    await waitFor(() => {
+      expect(screen.getByText(/Loading game/i)).toBeInTheDocument()
+    })
 
     // Wait a bit to confirm it's stuck
     await new Promise(resolve => setTimeout(resolve, 100))
