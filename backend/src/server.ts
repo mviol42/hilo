@@ -63,6 +63,7 @@ export async function createServer() {
   // API routes
   const { lobbyRouter, setLobbySocketIO } = await import('./routes/lobby');
   const { gameRouter, setSocketIO } = await import('./routes/game');
+  const { sessionRouter } = await import('./routes/session');
   const { lobbyService } = await import('./services/lobbyService');
   const { redisService } = await import('./services/redisService');
 
@@ -75,6 +76,7 @@ export async function createServer() {
 
   app.use('/api/lobby', lobbyRouter);
   app.use('/api/game', gameRouter);
+  app.use('/api/session', sessionRouter);
 
   // Serve frontend static files in production
   if (NODE_ENV === 'production') {

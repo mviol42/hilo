@@ -1135,6 +1135,145 @@ describe('GameContext', () => {
       expect(screen.getByTestId('state-version')).toHaveTextContent('0')
       expect(screen.getByTestId('game-phase')).toHaveTextContent('playing')
     })
+
+    it('accepts new game state with lower version when game ID changes (play-again flow)', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      // Old game ends with high version (e.g., version 53)
+      const oldGameView: PlayerView = {
+        id: 'old-game-123',
+        phase: 'ended',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [true, true, true],
+        otherPlayers: {},
+        pile: [],
+        deckCount: 0,
+        activePlayerId: 'player-1',
+        winner: 'player-1',
+        winnerName: 'Alice',
+        playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
+        stateVersion: 53,
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: oldGameView })
+      })
+
+      expect(screen.getByTestId('state-version')).toHaveTextContent('53')
+      expect(screen.getByTestId('game-phase')).toHaveTextContent('ended')
+
+      // New game starts with version 1 (different game ID)
+      // This simulates the play-again flow without clearing state
+      const newGameView: PlayerView = {
+        id: 'new-game-456',
+        phase: 'setup',
+        myHand: [{ rank: '5', suit: 'hearts' }],
+        myFaceUp: [],
+        myFaceDownCount: 3,
+        myFaceDownPlayed: [false, false, false],
+        otherPlayers: {},
+        pile: [],
+        deckCount: 40,
+        activePlayerId: 'player-1',
+        playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
+        stateVersion: 1,
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: newGameView })
+      })
+
+      // Should accept the new game despite lower version number
+      expect(screen.getByTestId('state-version')).toHaveTextContent('1')
+      expect(screen.getByTestId('game-phase')).toHaveTextContent('setup')
+    })
+
+    it('still rejects stale updates for the same game after accepting new game', () => {
+      let dispatchRef: ReturnType<typeof useGame>['dispatch']
+
+      render(
+        <GameProvider>
+          <DispatchableComponent
+            onMount={(dispatch) => {
+              dispatchRef = dispatch
+            }}
+          />
+        </GameProvider>
+      )
+
+      // Old game with version 50
+      const oldGameView: PlayerView = {
+        id: 'old-game-123',
+        phase: 'ended',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 0,
+        myFaceDownPlayed: [],
+        otherPlayers: {},
+        pile: [],
+        deckCount: 0,
+        activePlayerId: 'player-1',
+        playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
+        stateVersion: 50,
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: oldGameView })
+      })
+
+      // New game with version 5
+      const newGameView: PlayerView = {
+        id: 'new-game-456',
+        phase: 'playing',
+        myHand: [],
+        myFaceUp: [],
+        myFaceDownCount: 3,
+        myFaceDownPlayed: [],
+        otherPlayers: {},
+        pile: [],
+        deckCount: 40,
+        activePlayerId: 'player-1',
+        playerNames: { 'player-1': 'Alice' },
+        turnOrder: ['player-1'],
+        stateVersion: 5,
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: newGameView })
+      })
+
+      expect(screen.getByTestId('state-version')).toHaveTextContent('5')
+
+      // Try to send stale update (version 3) for the NEW game
+      const staleNewGameView: PlayerView = {
+        ...newGameView,
+        stateVersion: 3,
+        activePlayerId: 'player-2',
+      }
+
+      act(() => {
+        dispatchRef({ type: 'SET_GAME_STATE', payload: staleNewGameView })
+      })
+
+      // Should still show version 5 because stale update was rejected
+      expect(screen.getByTestId('state-version')).toHaveTextContent('5')
+      expect(screen.getByTestId('active-player')).toHaveTextContent('player-1')
+    })
   })
 })
 

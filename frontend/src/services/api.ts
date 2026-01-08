@@ -19,6 +19,8 @@ import type {
   PickUpPileResponse,
   PlayAgainRequest,
   PlayAgainResponse,
+  RejoinRequest,
+  RejoinResponse,
   ErrorResponse,
 } from '@hilo/shared'
 import { config } from '@/config'
@@ -102,6 +104,13 @@ class ApiClient {
 
   async playAgain(request: PlayAgainRequest): Promise<PlayAgainResponse> {
     const response = await this.client.post<PlayAgainResponse>('/api/game/play-again', request)
+    return response.data
+  }
+
+  // Session endpoints
+
+  async rejoinSession(request: RejoinRequest): Promise<RejoinResponse> {
+    const response = await this.client.post<RejoinResponse>('/api/session/rejoin', request)
     return response.data
   }
 }

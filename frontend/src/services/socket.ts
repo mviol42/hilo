@@ -36,11 +36,6 @@ class SocketManager {
   private reconnectAttempt = 0
   private connectionStateHandlers: Set<ConnectionStateHandler> = new Set()
 
-  // Store lobby/game info for auto-rejoin after reconnection
-  private currentLobbyId: string | null = null
-  private currentPlayerId: string | null = null
-  private currentGameId: string | null = null
-
   connect(): TypedSocket {
     if (this.socket?.connected) {
       return this.socket
@@ -68,9 +63,6 @@ class SocketManager {
       this.socket.disconnect()
       this.socket = null
     }
-    this.currentLobbyId = null
-    this.currentPlayerId = null
-    this.currentGameId = null
     this.updateConnectionState('disconnected')
   }
 
@@ -91,24 +83,7 @@ class SocketManager {
       console.log('[Socket] Connected')
       this.reconnectAttempt = 0
       this.updateConnectionState('connected')
-
-      // Auto-rejoin lobby if we were in one
-      if (this.currentLobbyId && this.currentPlayerId) {
-        console.log('[Socket] Auto-rejoining lobby:', this.currentLobbyId)
-        this.socket?.emit('lobby:join', {
-          lobbyId: this.currentLobbyId,
-          playerId: this.currentPlayerId,
-        })
-
-        // Request game state if we were in a game (for immediate recovery)
-        if (this.currentGameId) {
-          console.log('[Socket] Requesting game state:', this.currentGameId)
-          this.socket?.emit('game:requestState', {
-            gameId: this.currentGameId,
-            playerId: this.currentPlayerId,
-          })
-        }
-      }
+      // Pages will handle rejoin via useSessionRejoin hook
     })
 
     this.socket.on('disconnect', (reason) => {
@@ -177,46 +152,33 @@ class SocketManager {
     this.updateConnectionState('connecting')
   }
 
-  // Join lobby room (stores for auto-rejoin)
-  joinLobby(lobbyId: string, playerId: string): void {
+  /**
+   * Join a session with explicit IDs.
+   * Used for both first-time connections and reconnections.
+   * @param playerId - Player ID from localStorage
+   * @param lobbyId - Lobby ID from URL or API response
+   * @param gameId - Optional game ID if joining active game
+   */
+  joinSession(playerId: string, lobbyId: string, gameId?: string): void {
     if (!this.socket) {
       throw new Error('Socket not connected')
     }
-    // Store for auto-rejoin after reconnection
-    this.currentLobbyId = lobbyId
-    this.currentPlayerId = playerId
+
+    // Join lobby room
+    console.log('[Socket] Joining lobby:', lobbyId)
     this.socket.emit('lobby:join', { lobbyId, playerId })
+
+    // Request game state if in active game
+    if (gameId) {
+      console.log('[Socket] Requesting game state:', gameId)
+      this.socket.emit('game:requestState', { gameId, playerId })
+    }
   }
 
   // Leave lobby room
   leaveLobby(lobbyId: string, playerId: string): void {
     if (!this.socket) return
-    // Clear stored lobby info
-    if (this.currentLobbyId === lobbyId) {
-      this.currentLobbyId = null
-      this.currentPlayerId = null
-    }
     this.socket.emit('lobby:leave', { lobbyId, playerId })
-  }
-
-  // Get current lobby ID (for checking if user is in a lobby)
-  getCurrentLobbyId(): string | null {
-    return this.currentLobbyId
-  }
-
-  // Set current game ID (called when game starts)
-  setCurrentGameId(gameId: string): void {
-    this.currentGameId = gameId
-  }
-
-  // Clear current game ID (called when game ends or player leaves)
-  clearCurrentGameId(): void {
-    this.currentGameId = null
-  }
-
-  // Get current game ID
-  getCurrentGameId(): string | null {
-    return this.currentGameId
   }
 
   // Request game state (for manual recovery or initial load)

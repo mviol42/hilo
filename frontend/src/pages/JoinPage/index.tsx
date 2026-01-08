@@ -48,7 +48,7 @@ export function JoinPage() {
 
       // Connect to WebSocket room
       socketManager.connect()
-      socketManager.joinLobby(lobbyId.trim(), playerId)
+      socketManager.joinSession(playerId, lobbyId.trim())
 
       // Navigate to lobby page
       navigate(`/lobby?id=${lobbyId.trim()}`)

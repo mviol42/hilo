@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { apiClient } from '@/services/api'
 import { socketManager } from '@/services/socket'
 import { usePlayer, useLobby, useUI, useGame } from '@/context'
+import { useSessionRejoin } from '@/hooks'
 import { Button, Input, PlayerList, LoadingSpinner } from '@/components'
 import { copyToClipboard, getLobbyShareLink } from '@/utils/url'
 import type { DeckStrategy } from '@hilo/shared';
@@ -23,63 +24,20 @@ export function LobbyPage() {
   const { showToast, setIsLoading } = useUI()
   const { dispatch: gameDispatch } = useGame()
 
+  // Use session rejoin hook to handle reconnection
+  const { isRejoining, rejoinError } = useSessionRejoin({ type: 'lobby' })
+
   const [nameInput, setNameInput] = useState(playerName || '')
-  const [isReady, setIsReady] = useState(false)
   const [deckStrategy, setDeckStrategy] = useState<DeckStrategy>('standard')
-  const [isCheckingLobby, setIsCheckingLobby] = useState(true)
-  const [lobbyError, setLobbyError] = useState<string | null>(null)
 
-  // Check if user is in the lobby, redirect if not
-  const checkLobbyAccess = useCallback(async () => {
-    if (!lobbyId) {
-      navigate('/')
-      return
-    }
+  // Derive isReady from lobby state (syncs on refresh/rejoin)
+  const isReady = lobby?.players.find(p => p.id === playerId)?.isReady ?? false
 
-    // If we already have lobby state for this lobby, we're good
-    if (lobby && lobby.id === lobbyId) {
-      // Verify the current player is in the lobby
-      const isInLobby = lobby.players.some(p => p.id === playerId)
-      if (isInLobby) {
-        setIsCheckingLobby(false)
-        return
-      }
-    }
-
-    // Check lobby status before trying to join
-    try {
-      const status = await apiClient.getLobbyStatus(lobbyId)
-
-      if (!status.exists) {
-        setLobbyError('This lobby no longer exists.')
-        setIsCheckingLobby(false)
-        setTimeout(() => navigate('/'), 2000)
-        return
-      }
-
-      if (status.gameStarted) {
-        setLobbyError('This game has already started.')
-        setIsCheckingLobby(false)
-        setTimeout(() => navigate('/'), 2000)
-        return
-      }
-
-      // Lobby exists and game hasn't started - redirect to join page
-      navigate(`/join?id=${lobbyId}`)
-    } catch (error) {
-      console.error('Failed to check lobby status:', error)
-      setLobbyError('Failed to connect. Please try again.')
-      setIsCheckingLobby(false)
-    }
-  }, [lobbyId, lobby, playerId, navigate])
-
-  // Check lobby access on mount
+  // Set up WebSocket listener for game starting (only after rejoin completes)
   useEffect(() => {
-    checkLobbyAccess()
-  }, [checkLobbyAccess])
+    // Don't register listeners until rejoin is complete and socket is connected
+    if (isRejoining) return
 
-  // Set up WebSocket listener for game starting
-  useEffect(() => {
     const cleanup = socketManager.onLobbyGameStarting((data) => {
       console.log('[LobbyPage] lobby:gameStarting event received:', {
         gameId: data.gameId?.substring(0, 8),
@@ -92,7 +50,7 @@ export function LobbyPage() {
     })
 
     return cleanup
-  }, [navigate, lobbyId, playerId])
+  }, [navigate, lobbyId, playerId, isRejoining])
 
   const handleCopyLink = async () => {
     if (!lobbyId) return
@@ -132,11 +90,12 @@ export function LobbyPage() {
 
     try {
       setIsLoading(true)
-      await apiClient.readyLobby({
+      const response = await apiClient.readyLobby({
         lobbyId,
         playerId,
       })
-      setIsReady(true)
+      // Update lobby context with response (isReady is derived from lobby state)
+      lobbyDispatch({ type: 'SET_LOBBY', payload: response.lobby })
       showToast('You are ready!', 'success')
     } catch (error: any) {
       console.error('Failed to mark ready:', error)
@@ -161,6 +120,7 @@ export function LobbyPage() {
       })
 
       console.log('[LobbyPage] Game started successfully, gameState.id:', response.gameState.id?.substring(0, 20), 'navigating to:', `/game?id=${response.gameState.id}`)
+      console.log('[handleStartGame] New game state:', response.gameState.id, 'phase:', response.gameState.phase)
 
       // Initialize game state from API response (for leader)
       gameDispatch({ type: 'SET_GAME_STATE', payload: response.gameState })
@@ -209,25 +169,27 @@ export function LobbyPage() {
     return null
   }
 
-  // Show loading state while checking lobby access
-  if (isCheckingLobby) {
+  // Show loading state while rejoining session
+  if (isRejoining) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
           <LoadingSpinner />
-          <p className="mt-4 text-gray-600">Checking lobby status...</p>
+          <p className="mt-4 text-gray-600">Reconnecting to lobby...</p>
         </div>
       </div>
     )
   }
 
   // Show error state
-  if (lobbyError) {
+  if (rejoinError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-700 p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-          <p className="text-red-600 text-lg font-medium">{lobbyError}</p>
-          <p className="mt-2 text-gray-600">Redirecting to home...</p>
+          <p className="text-red-600 text-lg font-medium mb-4">{rejoinError}</p>
+          <Button onClick={() => navigate('/')} variant="primary">
+            Return Home
+          </Button>
         </div>
       </div>
     )
